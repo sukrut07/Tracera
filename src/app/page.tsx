@@ -2,55 +2,54 @@ import React from 'react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/session';
 import { Logo } from '@/components/shared/Logo';
+import { HeroWorkflowMotion } from '@/components/landing/HeroWorkflowMotion';
 import {
   ArrowRight,
-  ShieldCheck,
+  CheckCircle2,
   FileSpreadsheet,
   Clock,
   History,
-  CheckCircle2,
   AlertTriangle,
   FileCheck,
   Building2,
-  UserCheck,
+  ShieldCheck,
   Layers,
-  ChevronRight,
-  Sparkles,
   Lock,
-  Eye,
-  Send,
   MessageSquare,
   FileText,
   Mail,
   Smartphone,
   HardDrive,
+  Users,
+  Eye,
+  Check,
 } from 'lucide-react';
 
 export default async function LandingPage() {
   const currentUser = await getCurrentUser();
 
   return (
-    <div className="min-h-screen bg-zinc-50/60 text-zinc-900 selection:bg-zinc-900 selection:text-white">
-      {/* 1. Header / Navigation */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200/80">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#111110] selection:bg-[#111110] selection:text-white font-sans antialiased">
+      {/* 1. Header Navigation */}
+      <header className="sticky top-0 z-50 bg-[#FAFAF8]/90 backdrop-blur-md border-b border-[#E5E5E0]">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Logo size="md" href="/" />
 
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-zinc-600">
-            <a href="#problem" className="hover:text-zinc-950 transition-colors">
+          <nav className="hidden md:flex items-center gap-8 text-xs font-mono uppercase tracking-wider text-[#666660]">
+            <a href="#problem" className="hover:text-[#111110] transition-colors">
               The Problem
             </a>
-            <a href="#how-it-works" className="hover:text-zinc-950 transition-colors">
-              How It Works
+            <a href="#workflow" className="hover:text-[#111110] transition-colors">
+              Workflow
             </a>
-            <a href="#capabilities" className="hover:text-zinc-950 transition-colors">
+            <a href="#capabilities" className="hover:text-[#111110] transition-colors">
               Capabilities
             </a>
-            <a href="#traceability" className="hover:text-zinc-950 transition-colors">
+            <a href="#traceability" className="hover:text-[#111110] transition-colors">
               Traceability
             </a>
-            <a href="#roles" className="hover:text-zinc-950 transition-colors">
-              Portals
+            <a href="#security" className="hover:text-[#111110] transition-colors">
+              Security
             </a>
           </nav>
 
@@ -58,22 +57,22 @@ export default async function LandingPage() {
             {currentUser ? (
               <Link
                 href={currentUser.role === 'CLIENT' ? '/client/dashboard' : '/auditor/dashboard'}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs font-mono uppercase tracking-wider font-bold transition-colors"
               >
-                <span>Go to Dashboard</span>
+                <span>Enter Workspace</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:text-zinc-950 transition-colors"
+                  className="px-3 py-2 text-xs font-mono uppercase tracking-wider text-[#666660] hover:text-[#111110] transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs font-mono uppercase tracking-wider font-bold transition-colors"
                 >
                   <span>Get Started</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -85,644 +84,518 @@ export default async function LandingPage() {
       </header>
 
       {/* 2. Hero Section */}
-      <section className="relative pt-20 pb-24 overflow-hidden border-b border-zinc-200/80 bg-white bg-dot-pattern">
+      <section className="relative pt-20 pb-20 border-b border-[#E5E5E0] bg-subtle-grid">
         <div className="max-w-5xl mx-auto px-6 text-center">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200/90 text-[11px] font-bold text-zinc-800 mb-6 tracking-wide shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E5E0] text-[10px] font-mono font-bold uppercase tracking-widest text-[#111110] mb-6">
+            <span className="w-1.5 h-1.5 bg-[#E03E1A]" />
             <span>AUDIT WORKFLOW, REIMAGINED</span>
           </div>
 
-          {/* Main Headline */}
-          <h1 className="text-4xl sm:text-6xl font-black text-zinc-950 tracking-tight leading-[1.1] mb-6">
-            Every document. <br className="hidden sm:inline" />
-            Every review. <br className="hidden sm:inline" />
-            Every decision. <br className="hidden sm:inline" />
-            <span className="text-emerald-700">Clearly traced.</span>
+          {/* Headline */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-[#111110] tracking-tight leading-[1.08] mb-6">
+            Every document. <br />
+            Every review. <br />
+            <span className="text-[#E03E1A]">Clearly traced.</span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-zinc-600 leading-relaxed mb-10 font-normal">
-            Trecera brings client documents, reviews, corrections, approvals and audit history into one structured workflow for modern Chartered Accountant firms.
+          {/* Subheading */}
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-[#555550] leading-relaxed mb-8">
+            TRACERA helps CA firms manage client documents, reviews, corrections,
+            approvals, and immutable audit history in one structured workspace.
           </p>
 
-          {/* Primary Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-16">
+          {/* Primary & Secondary CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-950 hover:bg-zinc-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-all hover:translate-y-[-1px]"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs font-mono uppercase tracking-widest font-bold transition-colors"
             >
               <span>Get Started</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+
             <a
-              href="#how-it-works"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 text-xs sm:text-sm font-bold rounded-xl shadow-2xs transition-colors"
+              href="#workflow"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-white hover:bg-[#FAFAF8] text-[#111110] text-xs font-mono uppercase tracking-widest font-bold border border-[#E5E5E0] transition-colors"
             >
               <span>See How It Works</span>
             </a>
           </div>
 
-          {/* Hero Visual: Sophisticated Abstract Audit Workflow Visualization */}
-          <div className="bg-zinc-50/80 border border-zinc-200 rounded-3xl p-6 sm:p-10 shadow-sm max-w-4xl mx-auto text-left relative overflow-hidden">
-            <div className="flex items-center justify-between pb-6 border-b border-zinc-200/80 mb-8">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-300" />
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-300" />
-                <span className="text-xs font-mono text-zinc-400 ml-2">trecera-workflow-engine.ts</span>
+          {/* Hero Visual: Interactive Product Motion Loop */}
+          <HeroWorkflowMotion />
+        </div>
+      </section>
+
+      {/* 3. Problem Section */}
+      <section id="problem" className="py-24 border-b border-[#E5E5E0] bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              THE FRAGMENTATION PROBLEM
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              Audit work shouldn’t live across five different tools.
+            </h2>
+            <p className="text-sm text-[#666660] mt-3 leading-relaxed">
+              When client files, reviewer revisions, and statutory sign-offs are scattered, CA firms face untracked versions, missing invoices, and non-compliance risk.
+            </p>
+          </div>
+
+          {/* 5 Broken Tools Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-0 border border-[#E5E5E0] divide-y md:divide-y-0 md:divide-x divide-[#E5E5E0]">
+            {[
+              {
+                tool: 'WhatsApp',
+                issue: 'Lost attachments & unindexed threads',
+                detail: 'Crucial invoices sent as compressed photos with zero context or version tracking.',
+                icon: Smartphone,
+              },
+              {
+                tool: 'Excel',
+                issue: 'Formula errors & version chaos',
+                detail: 'Conflicting "Final_v2_edit.xlsx" files passed around with untracked manual overwrites.',
+                icon: FileSpreadsheet,
+              },
+              {
+                tool: 'Email',
+                issue: 'Buried threads & missing replies',
+                detail: 'Correction requests lost beneath hundreds of daily client correspondences.',
+                icon: Mail,
+              },
+              {
+                tool: 'Google Drive',
+                issue: 'Orphaned folders & overwrites',
+                detail: 'Clients upload unorganized scans into random directories without reviewer alerts.',
+                icon: HardDrive,
+              },
+              {
+                tool: 'Follow-ups',
+                issue: 'Missed filing statutory deadlines',
+                detail: 'Manual WhatsApp and phone reminders that fail to create an audit-compliant paper trail.',
+                icon: Clock,
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.tool} className="p-6 bg-[#FAFAF8] space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-[#777770]" />
+                    <span className="font-mono text-xs uppercase font-bold text-[#111110]">
+                      {item.tool}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-[#111110] leading-snug">
+                    {item.issue}
+                  </h4>
+                  <p className="text-xs text-[#666660] leading-relaxed font-sans">
+                    {item.detail}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Transition to TRACERA banner */}
+          <div className="mt-8 border border-[#111110] bg-[#111110] text-[#FAFAF8] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-1">
+                THE SOLUTION
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+                One unified, traceable audit system.
+              </h3>
+              <p className="text-xs text-[#A1A19A] mt-1">
+                Every document submitted, reviewed, corrected, and approved in a single state machine.
+              </p>
+            </div>
+
+            <Link
+              href="/login"
+              className="px-5 py-2.5 bg-[#FAFAF8] hover:bg-white text-[#111110] text-xs font-mono uppercase tracking-widest font-bold shrink-0 transition-colors"
+            >
+              Experience TRACERA →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Editorial Workflow Section */}
+      <section id="workflow" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              THE 5-STEP LIFECYCLE
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              How TRACERA Works
+            </h2>
+            <p className="text-sm text-[#666660] mt-3">
+              An editorial progression designed around the genuine statutory review cycle of Chartered Accountants.
+            </p>
+          </div>
+
+          {/* Editorial Numbered Timeline */}
+          <div className="border border-[#E5E5E0] bg-white divide-y divide-[#E5E5E0]">
+            {[
+              {
+                num: '01',
+                title: 'UPLOAD',
+                subtitle: 'Client submits the source document',
+                desc: 'Client uploads Bank Statements, Purchase Registers, GST Returns, or Tax Invoices. Document is immutably registered as Version 1 in SUBMITTED status.',
+                meta: 'Preserves original raw file · Generates OCR preview · Auto-assigns engagement auditor',
+              },
+              {
+                num: '02',
+                title: 'REVIEW',
+                subtitle: 'Auditor examines the exact version',
+                desc: 'Auditor opens the split-screen Review Workspace. Verifies line-by-line totals against ICEGATE/GST portal with the 4-point CA statutory verification checklist.',
+                meta: 'State transitions to UNDER_REVIEW · Logs reviewer name & start timestamp',
+              },
+              {
+                num: '03',
+                title: 'CORRECT',
+                subtitle: 'Auditor requests revision with mandatory reason',
+                desc: 'If line discrepancies or missing invoices exist, auditor issues a formal correction request. Client receives an instant Action Required alert on their dashboard.',
+                meta: 'State transitions to CORRECTION_REQUIRED · Mandatory reason logged to audit history',
+              },
+              {
+                num: '04',
+                title: 'APPROVE',
+                subtitle: 'Auditor approves the final reconciled version',
+                desc: 'Client uploads Version 2 (previous version is safely preserved). Auditor confirms the reconciliation and issues official statutory sign-off.',
+                meta: 'State transitions to APPROVED · Document is permanently locked against changes',
+              },
+              {
+                num: '05',
+                title: 'TRACE',
+                subtitle: 'Every action remains recorded forever',
+                desc: 'Complete chronological history generated in compliance with Section 143(3). One click exports the official CA Audit Verification Report as a signed PDF.',
+                meta: 'Tamper-evident chronological log · Actor, role, version & timestamp preserved',
+              },
+            ].map((step) => (
+              <div
+                key={step.num}
+                className="p-8 sm:p-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-start hover:bg-[#FAFAF8]/60 transition-colors"
+              >
+                <div className="md:col-span-2">
+                  <span className="text-4xl sm:text-5xl font-mono font-black text-[#111110] tracking-tighter">
+                    {step.num}
+                  </span>
+                  <span className="text-xs font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mt-1">
+                    {step.title}
+                  </span>
+                </div>
+
+                <div className="md:col-span-6 space-y-2">
+                  <h3 className="text-lg font-bold text-[#111110]">
+                    {step.subtitle}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#555550] leading-relaxed font-sans">
+                    {step.desc}
+                  </p>
+                </div>
+
+                <div className="md:col-span-4 bg-[#FAFAF8] border border-[#E5E5E0] p-4 text-[11px] font-mono text-[#666660] space-y-1">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#111110] block">
+                    STATE MACHINE & AUDIT COMMIT:
+                  </span>
+                  <p>{step.meta}</p>
+                </div>
               </div>
-              <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60 font-semibold">
-                Section 143(3) Compliant
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Asymmetric Capabilities Grid */}
+      <section id="capabilities" className="py-24 border-b border-[#E5E5E0] bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              BUILT FOR CA AUDITORS
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              Engineered for document control.
+            </h2>
+            <p className="text-sm text-[#666660] mt-3">
+              Essential capabilities without feature bloat. Focused entirely on document lifecycle integrity.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Big feature card 1 */}
+            <div className="md:col-span-2 border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
+                CORE CAPABILITY
+              </span>
+              <h3 className="text-2xl font-bold text-[#111110]">
+                Strict Document Version Control (v1, v2, v3…)
+              </h3>
+              <p className="text-sm text-[#555550] leading-relaxed font-sans">
+                Never worry about overwritten files again. When a client uploads a revision, TRACERA automatically preserves all prior versions with their respective reviewer remarks, original timestamps, and extraction records.
+              </p>
+              <div className="pt-4 border-t border-[#E5E5E0] flex flex-wrap gap-4 text-xs font-mono text-[#555550]">
+                <span className="flex items-center gap-1.5 font-semibold text-[#111110]">
+                  <Check className="w-3.5 h-3.5 text-[#E03E1A]" /> Immutable Storage
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#111110]">
+                  <Check className="w-3.5 h-3.5 text-[#E03E1A]" /> Instant Version Comparison
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#111110]">
+                  <Check className="w-3.5 h-3.5 text-[#E03E1A]" /> Decision Audit Trail
+                </span>
+              </div>
+            </div>
+
+            {/* Feature card 2 */}
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
+                STATUTORY COMPLIANCE
+              </span>
+              <h3 className="text-xl font-bold text-[#111110]">
+                Section 143(3) Audit Trail
+              </h3>
+              <p className="text-xs text-[#555550] leading-relaxed">
+                Append-only chronological event logs documenting every upload, state shift, and partner sign-off.
+              </p>
+              <div className="pt-2 font-mono text-[11px] text-[#111110] font-bold">
+                Exportable Official CA PDF Report →
+              </div>
+            </div>
+
+            {/* Feature card 3 */}
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
+                AUDITOR WORKSPACE
+              </span>
+              <h3 className="text-xl font-bold text-[#111110]">
+                Split-Screen Review Console
+              </h3>
+              <p className="text-xs text-[#555550] leading-relaxed">
+                Inspect 60% document preview side-by-side with 4-point verification checklists and comment threads.
+              </p>
+            </div>
+
+            {/* Feature card 4 */}
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
+                CLIENT EXPERIENCE
+              </span>
+              <h3 className="text-xl font-bold text-[#111110]">
+                Action-Required Correction Alerts
+              </h3>
+              <p className="text-xs text-[#555550] leading-relaxed">
+                Clients see high-priority revision requests prominently on login, reducing turnaround lag by 70%.
+              </p>
+            </div>
+
+            {/* Feature card 5 */}
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
+                SECURITY & ISOLATION
+              </span>
+              <h3 className="text-xl font-bold text-[#111110]">
+                Multi-Tenant Client Isolation
+              </h3>
+              <p className="text-xs text-[#555550] leading-relaxed">
+                Server-enforced role-based access guarantees clients can never see cross-firm files or audits.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Signature Traceability Section */}
+      <section id="traceability" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              IMMUTABLE AUDIT TRAIL
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              Nothing disappears into the inbox.
+            </h2>
+            <p className="text-sm text-[#666660] mt-3">
+              Every transition in TRACERA is an immutable audit record containing actor identity, role, target version, and timestamp.
+            </p>
+          </div>
+
+          {/* Visual Audit Trail Mockup */}
+          <div className="max-w-4xl mx-auto border border-[#E5E5E0] bg-white p-6 sm:p-10 font-mono">
+            <div className="border-b border-[#E5E5E0] pb-4 mb-6 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase text-[#777770] tracking-widest block">
+                  ENGAGEMENT AUDIT TRAIL
+                </span>
+                <span className="text-sm font-bold text-[#111110]">
+                  DOC-2024-0421 · ABC Traders Pvt Ltd
+                </span>
+              </div>
+              <span className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                LOCKED & CERTIFIED
               </span>
             </div>
 
-            {/* Workflow Diagram Nodes */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-              {/* Node 1: Client Upload */}
-              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xs">
-                <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700 mb-2">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Step 01</span>
-                <h4 className="text-xs font-bold text-zinc-900 mt-0.5">Client Upload</h4>
-                <p className="text-[11px] text-zinc-500 mt-1">Purchase Register (v1)</p>
-                <span className="inline-block mt-2 text-[10px] px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-md font-mono font-bold">
-                  SUBMITTED
-                </span>
-              </div>
-
-              {/* Arrow 1 */}
-              <div className="hidden md:flex justify-center text-zinc-300">
-                <ArrowRight className="w-5 h-5" />
-              </div>
-
-              {/* Node 2: Auditor Review */}
-              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xs">
-                <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700 mb-2">
-                  <UserCheck className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Step 02</span>
-                <h4 className="text-xs font-bold text-zinc-900 mt-0.5">Auditor Review</h4>
-                <p className="text-[11px] text-zinc-500 mt-1">5-Point Checklist</p>
-                <span className="inline-block mt-2 text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md font-mono font-bold">
-                  UNDER REVIEW
-                </span>
-              </div>
-
-              {/* Arrow 2 */}
-              <div className="hidden md:flex justify-center text-zinc-300">
-                <ArrowRight className="w-5 h-5" />
-              </div>
-
-              {/* Node 3: Decision Branch (Correction / Approval) */}
-              <div className="space-y-2.5">
-                <div className="bg-white border border-rose-200/80 rounded-xl p-3 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-rose-800">CORRECTION</span>
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Mandatory reason $\rightarrow$ v2</p>
-                </div>
-
-                <div className="bg-white border border-emerald-200/80 rounded-xl p-3 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-emerald-800">APPROVED</span>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Locked & Certified</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Audit Log Strip */}
-            <div className="mt-8 pt-5 border-t border-zinc-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-zinc-700">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span className="font-bold">Append-Only Audit History</span>
-                <span className="text-zinc-400">•</span>
-                <span className="text-zinc-500 text-[11px]">Every upload, review note & status permanently logged</span>
-              </div>
-              <span className="font-mono text-[11px] text-zinc-400">SHA-256 Verified Trail</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Section 1: The Problem */}
-      <section id="problem" className="py-24 border-b border-zinc-200/80 bg-zinc-50/50">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              The Fragmentation Problem
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              Audit shouldn&apos;t live across five different apps.
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-3 leading-relaxed">
-              When CA teams exchange statutory records over loose channels, invoices go missing, versions collide, and accountability vanishes.
-            </p>
-          </div>
-
-          {/* Visual: Fragmented Channels vs Trecera Unified Workflow */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-            {/* The Old Way */}
-            <div className="bg-white border border-rose-200/80 rounded-2xl p-6 sm:p-8 shadow-xs">
-              <div className="flex items-center gap-2.5 pb-4 border-b border-zinc-100 text-rose-700 font-bold text-xs uppercase tracking-wider">
-                <AlertTriangle className="w-4 h-4" />
-                <span>The Fragmented Reality</span>
-              </div>
-
-              <div className="space-y-4 pt-6 text-xs">
-                <div className="flex items-start gap-3 text-zinc-600">
-                  <div className="p-2 rounded-lg bg-zinc-100 text-zinc-700 shrink-0 mt-0.5">
-                    <Smartphone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-zinc-900 block font-semibold">WhatsApp Messages</strong>
-                    <span>Photos of bills, forgotten follow-up texts, zero audit trail.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 text-zinc-600">
-                  <div className="p-2 rounded-lg bg-zinc-100 text-zinc-700 shrink-0 mt-0.5">
-                    <FileSpreadsheet className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-zinc-900 block font-semibold">Multiple Excel Revisions</strong>
-                    <span>&ldquo;Purchase_Reg_Final_v2_edit.xlsx&rdquo; — nobody knows which version was approved.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 text-zinc-600">
-                  <div className="p-2 rounded-lg bg-zinc-100 text-zinc-700 shrink-0 mt-0.5">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-zinc-900 block font-semibold">Scattered Email Threads</strong>
-                    <span>Missing attachments, delayed client responses, untracked remarks.</span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 text-zinc-600">
-                  <div className="p-2 rounded-lg bg-zinc-100 text-zinc-700 shrink-0 mt-0.5">
-                    <HardDrive className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-zinc-900 block font-semibold">Uncontrolled Google Drive Folders</strong>
-                    <span>Accidental file overwrites, unverified permissions, lack of statutory sign-off.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* The Trecera Way */}
-            <div className="bg-white border-2 border-zinc-900 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2.5 pb-4 border-b border-zinc-100 text-emerald-800 font-bold text-xs uppercase tracking-wider">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>The Trecera Solution: One Workflow</span>
-                </div>
-
-                <div className="space-y-4 pt-6 text-xs text-zinc-600">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700 shrink-0 mt-0.5">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <strong className="text-zinc-900 block font-semibold">Strict Version Preservation</strong>
-                      <span>Version 1 is never deleted. Revisions create v2, v3 with full historical file retention.</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700 shrink-0 mt-0.5">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <strong className="text-zinc-900 block font-semibold">Append-Only Audit History</strong>
-                      <span>Immutable chronological record of every status transition, uploader, reviewer, and rationale.</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700 shrink-0 mt-0.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div>
-                      <strong className="text-zinc-900 block font-semibold">Enforced State Transitions</strong>
-                      <span>No invalid jumps. Clients cannot approve; auditors cannot approve unreviewed files.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-zinc-100">
-                <Link
-                  href="/login"
-                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  <span>Experience the Clean Workflow</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Section 2: How Trecera Works (5 Steps) */}
-      <section id="how-it-works" className="py-24 border-b border-zinc-200/80 bg-white">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto mb-16">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              Structured Methodology
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              How Trecera Works
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-2">
-              Five clear steps from initial client submission to locked audit sign-off.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Step 1 */}
-            <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-xs font-bold text-zinc-400">01</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-2">Upload</h3>
-                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                  Client uploads bank statements, purchase registers, or invoices with automated file typing.
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-400 mt-4 block font-medium">Status: SUBMITTED</span>
-            </div>
-
-            {/* Step 2 */}
-            <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-xs font-bold text-zinc-400">02</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-2">Review</h3>
-                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                  Auditor opens the split-view console, checks the 5-point verification checklist, and reviews data.
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-400 mt-4 block font-medium">Status: UNDER REVIEW</span>
-            </div>
-
-            {/* Step 3 */}
-            <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-xs font-bold text-rose-600">03</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-2">Correct</h3>
-                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                  Discrepancies trigger a formal correction request with mandatory reason. Client uploads v2.
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-rose-600 mt-4 block font-medium">Status: CORRECTION</span>
-            </div>
-
-            {/* Step 4 */}
-            <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-xs font-bold text-emerald-600">04</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-2">Approve</h3>
-                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                  Auditor approves the verified version. Document state locks against further edits.
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-emerald-600 mt-4 block font-medium">Status: APPROVED</span>
-            </div>
-
-            {/* Step 5 */}
-            <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="font-mono text-xs font-bold text-zinc-900">05</span>
-                <h3 className="text-sm font-bold text-zinc-900 mt-2">Trace</h3>
-                <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                  Complete append-only timeline generated with timestamps, versions, and reviewer notes.
-                </p>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-600 mt-4 block font-medium">Section 143(3)</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Section 3: Core Capabilities */}
-      <section id="capabilities" className="py-24 border-b border-zinc-200/80 bg-zinc-50/50">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto mb-16">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              Enterprise Features
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              Built for CA Rigor & Precision
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-2">
-              Every feature designed to remove ambiguity and guarantee compliance.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <FileSpreadsheet className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Document Management</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Centralize Bank Statements, Purchase Registers, Tax Invoices, and TDS forms by FY and client.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <Layers className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Version Control</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Prior versions are permanently archived. Never overwrite historical submissions or working papers.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <CheckCircle2 className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Structured Review</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                5-point verification checklist ensures legible data, valid GSTINs, and consistent tax totals.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <AlertTriangle className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Correction Workflow</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Auditors specify exact missing records. Clients receive instant alerts to upload reconciled fixes.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <Clock className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Audit History</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Chronological event trail capturing exact actors, timestamps, versions, and rationale.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <Lock className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Role-Based Access</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Strict multi-tenant boundaries. Clients can only see their files; only auditors can approve.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <Sparkles className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">Automated Extraction</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Extracts invoice numbers, dates, vendor GSTIN, and taxable amounts with confidence scores.
-              </p>
-            </div>
-
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-2xs">
-              <ShieldCheck className="w-5 h-5 text-zinc-900 mb-3" />
-              <h4 className="text-xs font-bold text-zinc-900">PDF Report Export</h4>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                Export an official CA verification certificate with document metadata and full audit logs.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Section 4: Traceability Showcase */}
-      <section id="traceability" className="py-24 border-b border-zinc-200/80 bg-white">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto mb-16">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              The Primary Differentiator
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              Unbroken Traceability
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-2">
-              Every status change is permanently committed. Nothing is hidden, modified, or erased.
-            </p>
-          </div>
-
-          {/* Vertical Timeline Card */}
-          <div className="bg-zinc-50/70 border border-zinc-200/90 rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="space-y-6">
-              {/* Event 1 */}
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div className="flex-1 pb-6 border-b border-zinc-200/70">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900">Document Approved</span>
-                    <span className="text-[10px] font-mono text-zinc-400">18 Sep 2026, 11:30 AM</span>
+              {[
+                {
+                  state: 'DOCUMENT_APPROVED',
+                  actor: 'Rahul Sharma, CA',
+                  role: 'AUDITOR',
+                  version: 'v2',
+                  time: '18 Sep 2026 · 03:00 PM',
+                  desc: 'Verified invoice INV-204 and reconciled with ICEGATE and GST portal. Approved.',
+                },
+                {
+                  state: 'REVIEW_STARTED',
+                  actor: 'Rahul Sharma, CA',
+                  role: 'AUDITOR',
+                  version: 'v2',
+                  time: '18 Sep 2026 · 02:25 PM',
+                  desc: 'Re-opened review queue for version 2.',
+                },
+                {
+                  state: 'CORRECTION_UPLOADED',
+                  actor: 'ABC Traders (Client)',
+                  role: 'CLIENT',
+                  version: 'v2',
+                  time: '18 Sep 2026 · 02:10 PM',
+                  desc: 'Re-uploaded with missing invoice INV-204 added.',
+                },
+                {
+                  state: 'CORRECTION_REQUESTED',
+                  actor: 'Rahul Sharma, CA',
+                  role: 'AUDITOR',
+                  version: 'v1',
+                  time: '18 Sep 2026 · 11:20 AM',
+                  desc: 'Invoice INV-204 is missing from the purchase register. Please correct and re-upload.',
+                },
+                {
+                  state: 'DOCUMENT_UPLOADED',
+                  actor: 'ABC Traders (Client)',
+                  role: 'CLIENT',
+                  version: 'v1',
+                  time: '18 Sep 2026 · 10:15 AM',
+                  desc: 'Initial monthly submission for audit check.',
+                },
+              ].map((log, idx) => (
+                <div key={idx} className="relative pl-6 border-l-2 border-[#111110] space-y-1 text-xs">
+                  <div className="absolute -left-[5px] top-1 w-2 h-2 bg-[#111110]" />
+                  <div className="flex flex-wrap items-center justify-between text-[11px] text-[#777770]">
+                    <span className="font-bold text-[#111110]">
+                      {log.state} ({log.version})
+                    </span>
+                    <span>{log.time}</span>
                   </div>
-                  <p className="text-xs text-zinc-600 mt-1">
-                    Auditor <strong>Rahul Sharma</strong> signed off on Version 2. &ldquo;Reconciled with GSTR-2B. Math verified.&rdquo;
-                  </p>
-                  <span className="inline-block mt-2 text-[10px] font-mono px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded border border-emerald-200 font-semibold">
-                    Version 2
-                  </span>
-                </div>
-              </div>
-
-              {/* Event 2 */}
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-sky-100 border border-sky-300 text-sky-800 flex items-center justify-center shrink-0 mt-0.5">
-                  <Send className="w-4 h-4" />
-                </div>
-                <div className="flex-1 pb-6 border-b border-zinc-200/70">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900">Correction Uploaded (v2)</span>
-                    <span className="text-[10px] font-mono text-zinc-400">18 Sep 2026, 10:45 AM</span>
+                  <div className="text-[#333330]">
+                    By <strong className="text-[#111110]">{log.actor}</strong> ({log.role})
                   </div>
-                  <p className="text-xs text-zinc-600 mt-1">
-                    Client <strong>ABC Traders</strong> uploaded corrected file. Version 1 preserved.
+                  <p className="text-[#666660] font-sans text-xs pt-0.5">
+                    "{log.desc}"
                   </p>
-                  <span className="inline-block mt-2 text-[10px] font-mono px-2 py-0.5 bg-sky-50 text-sky-800 rounded border border-sky-200 font-semibold">
-                    Version 2 Created
-                  </span>
                 </div>
-              </div>
-
-              {/* Event 3 */}
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-rose-100 border border-rose-300 text-rose-800 flex items-center justify-center shrink-0 mt-0.5">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="flex-1 pb-6 border-b border-zinc-200/70">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900">Correction Requested</span>
-                    <span className="text-[10px] font-mono text-zinc-400">17 Sep 2026, 04:30 PM</span>
-                  </div>
-                  <p className="text-xs text-rose-800 bg-rose-50/70 p-2.5 rounded-lg border border-rose-200/60 mt-1">
-                    &ldquo;Invoice INV-204 is missing from the purchase register. Please correct and re-upload.&rdquo;
-                  </p>
-                  <span className="inline-block mt-2 text-[10px] font-mono px-2 py-0.5 bg-rose-50 text-rose-800 rounded border border-rose-200 font-semibold">
-                    Version 1
-                  </span>
-                </div>
-              </div>
-
-              {/* Event 4 */}
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-zinc-200 text-zinc-700 flex items-center justify-center shrink-0 mt-0.5">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-zinc-900">Document Uploaded</span>
-                    <span className="text-[10px] font-mono text-zinc-400">17 Sep 2026, 02:15 PM</span>
-                  </div>
-                  <p className="text-xs text-zinc-600 mt-1">
-                    Initial client submission: <code>purchase_register_apr.xlsx</code>
-                  </p>
-                  <span className="inline-block mt-2 text-[10px] font-mono px-2 py-0.5 bg-zinc-100 text-zinc-700 rounded border border-zinc-200 font-semibold">
-                    Version 1
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* 7. Section 5: Role-Based Portals */}
-      <section id="roles" className="py-24 border-b border-zinc-200/80 bg-zinc-50/50">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center max-w-xl mx-auto mb-16">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-              Tailored Portals
+      {/* 7. Security Section */}
+      <section id="security" className="py-24 border-b border-[#E5E5E0] bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              TRUST & GOVERNANCE
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-zinc-950 tracking-tight">
-              Clear Context for Every Role
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              Built around controlled access.
             </h2>
+            <p className="text-sm text-[#666660] mt-3">
+              Confidential financial records demand verifiable, role-restricted boundaries.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Client Portal Card */}
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-6 sm:p-8 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 uppercase">
-                  Client Workspace
-                </span>
-                <h3 className="text-lg font-bold text-zinc-900 mt-3">
-                  &ldquo;Know exactly what needs attention.&rdquo;
-                </h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  Clients get complete visibility into which documents are waiting for review, which need correction, and which are approved. No frantic phone calls before tax deadlines.
-                </p>
-
-                <ul className="mt-6 space-y-2.5 text-xs text-zinc-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Instant notification when auditor requests correction</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Upload revised files without overwriting previous versions</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Download certified audit reports and verification certificates</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-zinc-100">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 hover:text-emerald-700 transition-colors"
-                >
-                  <span>Explore Client Experience</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+              <span className="text-xs font-bold text-[#111110] block">
+                01 / Role-Based Access Control (RBAC)
+              </span>
+              <p className="text-[#666660] font-sans">
+                Clients strictly view their own organizational files. Auditors are isolated to assigned engagements.
+              </p>
             </div>
 
-            {/* Auditor Portal Card */}
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-6 sm:p-8 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 uppercase">
-                  Auditor Console
-                </span>
-                <h3 className="text-lg font-bold text-zinc-900 mt-3">
-                  &ldquo;Review documents with complete context.&rdquo;
-                </h3>
-                <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                  Auditors work from a unified, urgency-ranked review queue. Side-by-side document preview, standardized checklist verification, and 1-click correction requests.
-                </p>
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+              <span className="text-xs font-bold text-[#111110] block">
+                02 / Firebase Storage Isolation
+              </span>
+              <p className="text-[#666660] font-sans">
+                Files are segregated per document ID and version number. Files are never overwritten or deleted.
+              </p>
+            </div>
 
-                <ul className="mt-6 space-y-2.5 text-xs text-zinc-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Split-screen preview with inline spreadsheet and PDF viewer</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>5-point audit verification checklist before sign-off</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Multi-filter search across clients, FY, and document categories</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-zinc-100">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 hover:text-emerald-700 transition-colors"
-                >
-                  <span>Explore Auditor Experience</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+              <span className="text-xs font-bold text-[#111110] block">
+                03 / Strict State Machine Enforcement
+              </span>
+              <p className="text-[#666660] font-sans">
+                Unauthorized transitions (e.g. approving without review or client self-approvals) are blocked server-side.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 8. Section 6: Final CTA */}
-      <section className="py-24 bg-zinc-950 text-white text-center">
-        <div className="max-w-3xl mx-auto px-6">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-3">
-            Evaluation Ready
+      {/* 8. Final CTA Section */}
+      <section className="py-24 bg-[#111110] text-[#FAFAF8]">
+        <div className="max-w-5xl mx-auto px-6 text-center space-y-6">
+          <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block">
+            READY TO AUDIT
           </span>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4 text-white">
-            Bring your audit workflow into one traceable system.
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
+            Make every audit step traceable.
           </h2>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed mb-8">
-            Test the full lifecycle from document upload through revision, auditor checklist review, approval, and cryptographic audit log.
+          <p className="max-w-xl mx-auto text-sm text-[#A1A19A] leading-relaxed">
+            Bring documents, reviews, corrections and approvals into one structured workflow.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="pt-4">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-zinc-100 text-zinc-950 text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[#FAFAF8] hover:bg-white text-[#111110] text-xs font-mono uppercase tracking-widest font-bold transition-colors shadow-xs"
             >
-              <span>Start with Trecera</span>
+              <span>Get started with TRACERA</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 9. Minimalist Footer */}
-      <footer className="py-12 bg-white border-t border-zinc-200 text-xs text-zinc-500">
-        <div className="max-w-5xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4">
-          <Logo size="sm" href="/" />
-          <div className="flex items-center gap-4 text-[11px]">
-            <span>Section 143(3) Audit Compliance</span>
-            <span>•</span>
-            <span>MongoDB Atlas & Firebase Persistent</span>
-            <span>•</span>
-            <span>© 2026 Trecera</span>
+      {/* 9. Minimal Editorial Footer */}
+      <footer className="border-t border-[#E5E5E0] bg-white py-12">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+          <div className="space-y-2">
+            <Logo size="md" href="/" />
+            <p className="text-xs text-[#666660] font-mono">
+              Audit workflow, clearly traced.
+            </p>
           </div>
+
+          <div className="flex flex-wrap gap-8 text-xs font-mono text-[#666660]">
+            <a href="#problem" className="hover:text-[#111110]">Problem</a>
+            <a href="#workflow" className="hover:text-[#111110]">Workflow</a>
+            <a href="#capabilities" className="hover:text-[#111110]">Capabilities</a>
+            <a href="#security" className="hover:text-[#111110]">Security</a>
+            <Link href="/login" className="hover:text-[#111110]">Sign In</Link>
+            <Link href="/admin/evaluation-tools" className="text-[#E03E1A] hover:underline font-bold">Evaluation Workspace</Link>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 mt-8 pt-8 border-t border-[#E5E5E0] flex flex-wrap items-center justify-between text-[11px] font-mono text-[#888880] gap-4">
+          <span>© 2026 TRACERA Inc. All rights reserved.</span>
+          <span>Designed for Chartered Accountant practice management.</span>
         </div>
       </footer>
     </div>

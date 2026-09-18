@@ -9,14 +9,14 @@ interface UploadDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  clientId: string;
+  clientId?: string;
 }
 
 export function UploadDocumentModal({
   isOpen,
   onClose,
   onSuccess,
-  clientId,
+  clientId = 'c1',
 }: UploadDocumentModalProps) {
   const [title, setTitle] = useState('');
   const [documentType, setDocumentType] = useState<DocumentType>('PURCHASE_REGISTER');

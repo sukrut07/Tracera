@@ -62,6 +62,7 @@ export interface Review {
   reviewer_id: string;
   status: 'APPROVED' | 'CORRECTION_REQUIRED';
   comment?: string | null;
+  remarks?: string | null;
   created_at: string;
   reviewer?: UserProfile;
 }
@@ -72,6 +73,8 @@ export interface AuditLog {
   actor_id: string;
   actor_name?: string;
   actor_role?: Role;
+  performed_by_name?: string;
+  performed_by_role?: Role;
   action: AuditAction;
   metadata: {
     version?: number;
@@ -95,6 +98,9 @@ export interface AuditDocument {
   status: DocumentStatus;
   current_version: number;
   assigned_to: string | null;
+  file_name?: string;
+  latest_correction_reason?: string;
+  latest_review?: Review;
   created_at: string;
   updated_at: string;
   

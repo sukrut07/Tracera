@@ -5,15 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/components/shared/Logo';
 import {
-  Building2,
-  UserCheck,
-  Shield,
-  ArrowRight,
-  Lock,
-  Mail,
   AlertCircle,
-  Sparkles,
-  RotateCcw,
+  ArrowRight,
+  ShieldCheck,
+  Check,
+  Lock,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -22,15 +18,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resetting, setResetting] = useState(false);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   const handleLogin = async (e?: React.FormEvent, directEmail?: string) => {
     if (e) e.preventDefault();
     const loginEmail = directEmail || email;
 
     if (!loginEmail.trim()) {
-      setError('Please enter your email address');
+      setError('Please enter your work email address');
       return;
     }
 
@@ -56,179 +50,170 @@ export default function LoginPage() {
     }
   };
 
-  const handleResetDemo = async () => {
-    setResetting(true);
-    setResetMessage(null);
-    try {
-      const res = await fetch('/api/dev/reset', { method: 'POST' });
-      if (res.ok) {
-        setResetMessage('Demo database reset to initial seed state.');
-        setTimeout(() => setResetMessage(null), 3000);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setResetting(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-zinc-50/70 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Brand Header */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Logo size="lg" href="/" className="justify-center mb-4" />
-        <h2 className="text-2xl font-black text-zinc-950 tracking-tight">
-          Welcome back.
-        </h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Continue managing your audit workflow.
-        </p>
+    <div className="min-h-screen bg-[#FAFAF8] text-[#111110] flex flex-col justify-between py-12 px-6 font-sans antialiased">
+      {/* Top minimal header */}
+      <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+        <Logo size="md" href="/" />
+        <Link
+          href="/"
+          className="text-xs font-mono uppercase tracking-wider text-[#666660] hover:text-[#111110] transition-colors"
+        >
+          ← Return to Overview
+        </Link>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xs border border-zinc-200/90 rounded-3xl sm:px-8">
-          {/* Error Message */}
+      {/* Centered Editorial Auth Card */}
+      <div className="max-w-md w-full mx-auto my-12">
+        <div className="border border-[#E5E5E0] bg-white p-8 sm:p-10 space-y-6">
+          <div className="space-y-1.5 text-center">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block">
+              SECURE PORTAL ACCESS
+            </span>
+            <h1 className="text-2xl font-bold tracking-tight text-[#111110]">
+              Sign in to TRACERA
+            </h1>
+            <p className="text-xs text-[#666660] font-mono">
+              Audit workflows, clearly traced.
+            </p>
+          </div>
+
+          <div className="border-t border-[#E5E5E0]" />
+
+          {/* Error notice */}
           {error && (
-            <div className="mb-5 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs font-medium text-rose-800">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <div className="p-3 bg-rose-50 border border-rose-200 text-xs text-[#9A3412] font-mono flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#E03E1A]" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Reset Demo Feedback */}
-          {resetMessage && (
-            <div className="mb-5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-medium text-emerald-800">
-              <Sparkles className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span>{resetMessage}</span>
-            </div>
-          )}
-
-          {/* Real Credentials Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-1">
-                Email Address
+          {/* Form */}
+          <form onSubmit={(e) => handleLogin(e)} className="space-y-4 font-mono text-xs">
+            <div className="space-y-1.5">
+              <label className="block uppercase tracking-wider text-[11px] font-bold text-[#111110]">
+                Work Email
               </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5 pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="name@firm.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-xl pl-9 pr-3 py-2.5 text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 focus:bg-white placeholder:text-zinc-400"
-                />
-              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@firm.com or client@demo.com"
+                className="w-full px-3 py-2.5 bg-white border border-[#E5E5E0] text-[#111110] text-xs focus:outline-none focus:border-[#111110] transition-colors"
+              />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-zinc-700">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block uppercase tracking-wider text-[11px] font-bold text-[#111110]">
                   Password
                 </label>
-                <span className="text-[11px] text-zinc-400">Default: demo1234</span>
+                <button
+                  type="button"
+                  onClick={() => alert('Password recovery: for evaluation, use any demo persona.')}
+                  className="text-[10px] text-[#777770] hover:text-[#111110] underline"
+                >
+                  Forgot password?
+                </button>
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-xl pl-9 pr-3 py-2.5 text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 focus:bg-white placeholder:text-zinc-400"
-                />
-              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="w-full px-3 py-2.5 bg-white border border-[#E5E5E0] text-[#111110] text-xs focus:outline-none focus:border-[#111110] transition-colors"
+              />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              className="w-full py-3 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs uppercase tracking-widest font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 mt-2"
             >
-              <span>{loading ? 'Authenticating...' : 'Sign in'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {loading ? (
+                <span>Authenticating...</span>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[#E5E5E0]" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-white px-2 text-[#777770]">Or continue with</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleLogin(undefined, 'client@demo.com')}
+              className="w-full py-2.5 bg-white hover:bg-[#FAFAF8] border border-[#E5E5E0] text-[#111110] text-xs font-mono uppercase tracking-wider font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Continue with Google</span>
             </button>
           </form>
 
-          {/* Demo Personas Evaluation Drawer */}
-          <div className="mt-8 pt-6 border-t border-zinc-100">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                Evaluation Demo Accounts
-              </span>
+          {/* Quick Evaluation Persona Selectors */}
+          <div className="pt-4 border-t border-[#E5E5E0] space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold block">
+              EVALUATION PERSONAS (1-CLICK TEST):
+            </span>
+            <div className="grid grid-cols-3 gap-2 font-mono text-[11px]">
               <button
-                type="button"
-                onClick={handleResetDemo}
-                disabled={resetting}
-                className="text-[10px] text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors cursor-pointer"
-                title="Reset database back to initial state"
-              >
-                <RotateCcw className={`w-3 h-3 ${resetting ? 'animate-spin' : ''}`} />
-                <span>Reset Demo State</span>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <button
-                type="button"
                 onClick={() => handleLogin(undefined, 'client@demo.com')}
-                disabled={loading}
-                className="w-full text-left p-3 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-100/80 hover:border-zinc-300 transition-all flex items-center justify-between group cursor-pointer"
+                className="p-2 border border-[#E5E5E0] bg-[#FAFAF8] hover:bg-[#111110] hover:text-white transition-colors text-left cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-zinc-900 text-white flex items-center justify-center shrink-0">
-                    <Building2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-xs text-zinc-900 block group-hover:text-zinc-950">
-                      Client: ABC Traders
-                    </span>
-                    <span className="text-[10px] text-zinc-500 font-mono">
-                      client@demo.com • FY 2024-25
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-zinc-600 bg-white border border-zinc-200 px-2 py-0.5 rounded-md">
-                  CLIENT
-                </span>
+                <span className="font-bold block">Client</span>
+                <span className="text-[9px] text-[#777770] block truncate">ABC Traders</span>
               </button>
 
               <button
-                type="button"
                 onClick={() => handleLogin(undefined, 'auditor@demo.com')}
-                disabled={loading}
-                className="w-full text-left p-3 rounded-xl border border-zinc-200 bg-zinc-50/70 hover:bg-zinc-100/80 hover:border-zinc-300 transition-all flex items-center justify-between group cursor-pointer"
+                className="p-2 border border-[#E5E5E0] bg-[#FAFAF8] hover:bg-[#111110] hover:text-white transition-colors text-left cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0">
-                    <UserCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-xs text-zinc-900 block group-hover:text-zinc-950">
-                      Auditor: Rahul Sharma
-                    </span>
-                    <span className="text-[10px] text-zinc-500 font-mono">
-                      auditor@demo.com • CA Reviewer
-                    </span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                  AUDITOR
-                </span>
+                <span className="font-bold block">Auditor</span>
+                <span className="text-[9px] text-[#777770] block truncate">Rahul Sharma</span>
+              </button>
+
+              <button
+                onClick={() => handleLogin(undefined, 'admin@demo.com')}
+                className="p-2 border border-[#E5E5E0] bg-[#FAFAF8] hover:bg-[#111110] hover:text-white transition-colors text-left cursor-pointer"
+              >
+                <span className="font-bold block">Admin</span>
+                <span className="text-[9px] text-[#777770] block truncate">Partner</span>
               </button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Back Link */}
-        <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors"
-          >
-            ← Back to Trecera Overview
-          </Link>
-        </div>
+      {/* Bottom minimal disclaimer */}
+      <div className="max-w-md mx-auto text-center text-[11px] font-mono text-[#777770]">
+        <span>Protected by role-based authorization & Section 143(3) immutable logging.</span>
       </div>
     </div>
   );

@@ -2,18 +2,18 @@
 
 @layer base {
   :root {
-    --background: #fafafa;
-    --foreground: #09090b;
-    --card: #ffffff;
-    --card-foreground: #09090b;
-    --border: #e4e4e7;
-    --input: #e4e4e7;
-    --primary: #18181b;
-    --primary-foreground: #fafafa;
-    --muted: #f4f4f5;
-    --muted-foreground: #71717a;
-    --accent: #f4f4f5;
-    --accent-foreground: #18181b;
+    --background: #FAFAF8;
+    --foreground: #111110;
+    --card: #FFFFFF;
+    --card-foreground: #111110;
+    --border: #E5E5E0;
+    --input: #E5E5E0;
+    --primary: #111110;
+    --primary-foreground: #FAFAF8;
+    --muted: #F2F2EE;
+    --muted-foreground: #666660;
+    --accent: #E03E1A;
+    --accent-foreground: #FFFFFF;
   }
 
   body {
@@ -25,24 +25,62 @@
   }
 }
 
-/* Subtle dot-grid pattern for technical wireframe hero background */
-.bg-dot-pattern {
-  background-image: radial-gradient(#d4d4d8 1px, transparent 1px);
+/* Subtle architectural grid pattern */
+.bg-subtle-grid {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Fine technical dots pattern */
+.bg-subtle-dots {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 /* Custom scrollbar for tables and audit timelines */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border-radius: 4px;
+  background: #D5D5CF;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: #999990;
+}
+
+/* Animated flow lines for hero workflow visual */
+@keyframes workflowFlow {
+  0% {
+    stroke-dashoffset: 24;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-workflow-line {
+  stroke-dasharray: 6 6;
+  animation: workflowFlow 1.8s linear infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulseGlow 3s ease-in-out infinite;
 }

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trecera | AI-Assisted Audit Workflow Platform",
-  description: "Connected audit document lifecycle, review, versioning, and compliance tracking for CA firms",
+  title: "TRACERA — Audit Workflow, Clearly Traced",
+  description: "Connected audit document lifecycle, review, versioning, and compliance tracking for Chartered Accountant firms",
 };
 
 export default function RootLayout({
@@ -27,7 +27,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50/70 text-zinc-900">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#FAFAF8] text-[#111110] selection:bg-[#111110] selection:text-white">
+        {children}
+      </body>
     </html>
   );
 }

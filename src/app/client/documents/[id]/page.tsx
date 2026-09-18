@@ -6,5 +6,5 @@ export default async function ClientDocumentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/documents/${id}/history`);
+  redirect(`/documents/${id}`);
 }

@@ -17,44 +17,43 @@ export function Logo({
   const iconSizes = {
     sm: 'w-5 h-5',
     md: 'w-6 h-6',
-    lg: 'w-8 h-8',
+    lg: 'w-7 h-7',
   };
 
   const textSizes = {
-    sm: 'text-sm tracking-tight',
-    md: 'text-base tracking-tight',
-    lg: 'text-xl tracking-tight',
+    sm: 'text-xs tracking-[0.14em]',
+    md: 'text-sm tracking-[0.15em]',
+    lg: 'text-base tracking-[0.18em]',
   };
 
   const content = (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      {/* Abstract Geometric Audit Trail Glyph */}
+      {/* Precision Audit Glyph */}
       <div
-        className={`${iconSizes[size]} bg-zinc-950 text-zinc-50 rounded-lg flex items-center justify-center shadow-xs shrink-0 p-1 relative overflow-hidden`}
-        title="Trecera — Traceable Audit Workflow"
+        className={`${iconSizes[size]} bg-[#111110] text-[#FAFAF8] flex items-center justify-center shrink-0 p-1 relative border border-[#111110]`}
+        title="TRACERA — Audit Workflow Platform"
       >
         <svg
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-full h-full text-zinc-100"
+          strokeWidth="2.2"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          className="w-full h-full text-white"
         >
-          {/* Three connected document/audit nodes & trace lines */}
-          <circle cx="6" cy="6" r="2" fill="currentColor" />
-          <circle cx="18" cy="12" r="2" fill="currentColor" />
-          <circle cx="6" cy="18" r="2" fill="currentColor" />
+          {/* Precise audit connection nodes */}
+          <rect x="4" y="4" width="4" height="4" fill="currentColor" />
+          <rect x="16" y="10" width="4" height="4" fill="currentColor" />
+          <rect x="4" y="16" width="4" height="4" fill="currentColor" />
           <path d="M6 8v8" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M8 6h6a4 4 0 0 1 4 4v2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M18 14v-2a4 4 0 0 0-4-4H8" stroke="currentColor" strokeWidth="1.8" opacity="0.4" />
+          <path d="M8 6h5a3 3 0 0 1 3 3v1" stroke="currentColor" strokeWidth="1.8" />
         </svg>
       </div>
 
       {showWordmark && (
-        <span className={`font-black text-zinc-950 font-sans ${textSizes[size]}`}>
-          Trecera
+        <span className={`font-black text-[#111110] uppercase font-mono ${textSizes[size]}`}>
+          TRACERA
         </span>
       )}
     </div>
@@ -62,7 +61,7 @@ export function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="hover:opacity-90 transition-opacity">
+      <Link href={href} className="focus:outline-none inline-flex">
         {content}
       </Link>
     );

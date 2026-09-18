@@ -9,21 +9,17 @@ import {
   AlertTriangle,
   Clock,
   History,
-  Building2,
-  User,
-  Calendar,
   Eye,
   FileText,
   AlertCircle,
-  ExternalLink,
-  ChevronRight,
+  Download,
   ShieldCheck,
+  Check,
 } from 'lucide-react';
 import { AuditDocument, DocumentVersion, UserProfile } from '@/types';
 import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
 import { DocumentViewer } from '@/components/shared/DocumentViewer';
 import { ReviewChecklist } from '@/components/auditor/ReviewChecklist';
-import { AIReviewAssistant } from '@/components/auditor/AIReviewAssistant';
 import { ApproveModal } from '@/components/auditor/ApproveModal';
 import { RequestCorrectionModal } from '@/components/auditor/RequestCorrectionModal';
 import { AppShell } from '@/components/layout/AppShell';
@@ -44,6 +40,9 @@ export default function AuditorDocumentReviewPage({
 
   // Active version selector
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<number | null>(null);
+
+  // Review comments
+  const [auditorComments, setAuditorComments] = useState('');
 
   // Modals
   const [isApproveOpen, setIsApproveOpen] = useState(false);
@@ -72,7 +71,6 @@ export default function AuditorDocumentReviewPage({
     fetchDocument();
   }, [fetchDocument]);
 
-  // Start review if in SUBMITTED state
   const handleStartReview = async () => {
     setIsStartingReview(true);
     try {
@@ -96,10 +94,10 @@ export default function AuditorDocumentReviewPage({
 
   if (loading && !document) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 font-sans">
-        <div className="flex flex-col items-center gap-3 text-zinc-500 text-xs">
-          <div className="w-6 h-6 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
-          <span className="font-mono text-[11px] uppercase tracking-wider">Opening Review Workspace...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] font-mono text-xs text-[#777770]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-5 h-5 border-2 border-[#111110] border-t-transparent animate-spin" />
+          <span>OPENING REVIEW WORKSPACE...</span>
         </div>
       </div>
     );
@@ -107,15 +105,15 @@ export default function AuditorDocumentReviewPage({
 
   if (error || !document) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center font-sans">
-        <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-        <h3 className="text-base font-bold text-zinc-900">Document Unavailable</h3>
-        <p className="text-xs text-zinc-500 mt-1">{error || 'Could not find requested document'}</p>
+      <div className="p-8 max-w-lg mx-auto text-center font-mono text-xs">
+        <AlertCircle className="w-8 h-8 text-[#E03E1A] mx-auto mb-2" />
+        <h3 className="font-bold text-[#111110]">DOCUMENT UNAVAILABLE</h3>
+        <p className="text-[#666660] mt-1">{error || 'Could not locate requested audit record'}</p>
         <Link
           href="/auditor/dashboard"
-          className="mt-4 inline-block px-4 py-2 bg-zinc-950 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-zinc-800 transition-colors"
+          className="mt-4 inline-block px-4 py-2 bg-[#111110] text-white uppercase tracking-wider font-bold"
         >
-          Back to Review Workspace
+          ← Return to Review Queue
         </Link>
       </div>
     );
@@ -153,190 +151,236 @@ export default function AuditorDocumentReviewPage({
       }
     >
       <div className="space-y-6">
-        {/* Navigation & Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-zinc-200">
+        {/* Top Header Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E5E0] pb-5">
           <div className="flex items-center gap-3">
             <Link
               href="/auditor/dashboard"
               title="Return to Review Queue"
-              className="p-2 bg-white hover:bg-zinc-100 border border-zinc-200 text-zinc-600 rounded-xl shadow-2xs transition-colors"
+              className="p-2 border border-[#E5E5E0] bg-white hover:bg-[#FAFAF8] text-[#111110] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
+
             <div>
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-0.5">
-                <Link href="/auditor/dashboard" className="hover:text-zinc-900 font-mono text-[11px] uppercase tracking-wider">
-                  Review Queue
-                </Link>
-                <ChevronRight className="w-3 h-3 text-zinc-300" />
-                <span className="font-bold text-zinc-800">
-                  {document.client?.name}
-                </span>
-                <span className="text-zinc-300">•</span>
-                <span className="text-zinc-500 font-normal">
-                  {document.client?.company_name}
-                </span>
+              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#777770]">
+                <span>{document.client?.name || 'Client'}</span>
+                <span>·</span>
+                <span>{document.document_type.replace(/_/g, ' ')}</span>
               </div>
-              <h1 className="text-xl md:text-2xl font-black text-zinc-950 tracking-tight flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111110] flex items-center gap-3 mt-0.5">
                 <span>{document.title}</span>
-                <DocumentStatusBadge status={document.status} />
+                <span className="text-sm font-mono text-[#555550]">
+                  Version {document.current_version}
+                </span>
+                <DocumentStatusBadge status={document.status} size="sm" />
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <Link
-              href={`/documents/${document.id}/history`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+          <div className="flex items-center gap-3 font-mono text-xs">
+            <a
+              href={`/api/documents/${document.id}/report`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-[#E5E5E0] bg-white text-[#111110] hover:bg-[#FAFAF8] uppercase tracking-wider font-bold transition-colors"
             >
-              <History className="w-3.5 h-3.5 text-zinc-500" />
-              <span>Audit History</span>
-            </Link>
+              <Download className="w-3.5 h-3.5" />
+              <span>Audit Report (PDF)</span>
+            </a>
 
             {isSubmitted && (
               <button
                 onClick={handleStartReview}
                 disabled={isStartingReview}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111110] hover:bg-[#2A2A28] text-white uppercase tracking-wider font-bold transition-colors cursor-pointer"
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>{isStartingReview ? 'Starting...' : 'Start Review'}</span>
+                <span>{isStartingReview ? 'Starting...' : 'Begin Review'}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Split-View Layout */}
+        {/* 60 / 40 Split Layout: Dominant Document Viewer on Left */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT SIDE: Document Preview & File Information (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
-            {/* Version Selector Bar if multiple versions */}
-            {document.versions && document.versions.length > 1 && (
-              <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow-2xs flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-500">
-                  Document Version History:
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {document.versions.map((v) => (
+          {/* LEFT: 60% (7 cols on 12-grid) Document Viewer */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Version Selector Bar */}
+            <div className="border border-[#E5E5E0] bg-white p-3 font-mono text-xs flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
+                VERSION SELECTOR:
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                {document.versions?.map((v) => {
+                  const isCurrent = v.version_number === document.current_version;
+                  const isSelected = v.version_number === selectedVersionNumber;
+
+                  return (
                     <button
                       key={v.id}
                       onClick={() => setSelectedVersionNumber(v.version_number)}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                        selectedVersionNumber === v.version_number
-                          ? 'bg-zinc-950 text-white shadow-2xs'
-                          : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                      className={`px-3 py-1 text-xs uppercase tracking-wider font-bold cursor-pointer transition-colors border ${
+                        isSelected
+                          ? 'bg-[#111110] text-white border-[#111110]'
+                          : 'bg-[#FAFAF8] text-[#555550] border-[#E5E5E0] hover:bg-white'
                       }`}
                     >
-                      v{v.version_number}{' '}
-                      {v.version_number === document.current_version ? '(Current)' : ''}
+                      v{v.version_number} {isCurrent ? '(CURRENT)' : ''}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
 
-            {/* Active File Canvas */}
+            {/* Document Viewer Canvas */}
             <DocumentViewer
               version={activeVersion}
               title={document.title}
             />
+
+            {/* Version Metadata Summary */}
+            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs grid grid-cols-2 sm:grid-cols-4 gap-4 text-[#555550]">
+              <div>
+                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
+                  VERSION NUMBER
+                </span>
+                <span className="font-bold text-[#111110] block mt-0.5">
+                  v{activeVersion.version_number}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
+                  FILE NAME
+                </span>
+                <span className="font-bold text-[#111110] block mt-0.5 truncate" title={activeVersion.file_name}>
+                  {activeVersion.file_name}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
+                  UPLOADED AT
+                </span>
+                <span className="font-bold text-[#111110] block mt-0.5">
+                  {new Date(activeVersion.uploaded_at).toLocaleDateString('en-GB')}
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
+                  STORAGE
+                </span>
+                <span className="font-bold text-emerald-800 block mt-0.5">
+                  Immutable
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* RIGHT SIDE: Review Console (5 cols) */}
+          {/* RIGHT: 40% (5 cols on 12-grid) Review Console */}
           <div className="lg:col-span-5 space-y-4">
-            {/* Decision Panel Card */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-100">
-                <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-zinc-400">
-                  Review Decision Console
+            {/* 4-Point CA Statutory Checklist */}
+            <ReviewChecklist />
+
+            {/* Auditor Comments Area */}
+            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs space-y-2">
+              <label className="block text-[10px] uppercase tracking-widest text-[#777770] font-bold">
+                AUDITOR VERIFICATION REMARKS
+              </label>
+              <textarea
+                rows={3}
+                value={auditorComments}
+                onChange={(e) => setAuditorComments(e.target.value)}
+                placeholder="Enter statutory review notes, line item verification remarks, or instructions..."
+                className="w-full p-2.5 bg-[#FAFAF8] border border-[#E5E5E0] text-xs text-[#111110] focus:outline-none focus:border-[#111110] font-sans"
+              />
+            </div>
+
+            {/* Review Decision Block */}
+            <div className="border border-[#E5E5E0] bg-white p-5 font-mono text-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-2">
+                <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
+                  REVIEW DECISION
                 </span>
-                <span className="text-[10px] font-mono text-zinc-400">
+                <span className="text-[10px] text-[#777770]">
                   Section 143(3) Verified
                 </span>
               </div>
 
-              <div className="p-3.5 bg-zinc-50 rounded-xl space-y-2 text-xs border border-zinc-100 font-sans">
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Client:</span>
-                  <span className="font-semibold text-zinc-900">{document.client?.name}</span>
+              {isApproved ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>DOCUMENT APPROVED & CERTIFIED</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 font-sans">
+                    Audit sign-off logged to immutable history. Document locked against modifications.
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Document Type:</span>
-                  <span className="font-mono text-zinc-800 text-[11px]">
-                    {document.document_type.replace('_', ' ')}
-                  </span>
+              ) : isCorrection ? (
+                <div className="p-4 bg-orange-50 border border-orange-200 text-[#9A3412] space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#C2410C]">
+                    <AlertTriangle className="w-4 h-4 text-[#E03E1A]" />
+                    <span>CORRECTION NOTICE ISSUED</span>
+                  </div>
+                  <p className="text-xs font-sans text-[#111110] bg-white p-2.5 border border-orange-200">
+                    "{document.current_review?.comment || document.latest_correction_reason || 'Client revision requested.'}"
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Active Version:</span>
-                  <span className="font-mono font-bold text-zinc-900">
-                    v{document.current_version}
-                  </span>
+              ) : isSubmitted ? (
+                <div className="p-4 bg-blue-50 border border-blue-200 text-blue-900 space-y-2">
+                  <span className="font-bold block text-xs">AWAITING AUDIT REVIEW</span>
+                  <p className="text-xs font-sans text-blue-800">
+                    Click "Begin Review" above to take ownership and verify line items.
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Assigned Reviewer:</span>
-                  <span className="font-medium text-zinc-800">
-                    {document.assigned_auditor?.name || 'Rahul Sharma, CA'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Uploaded At:</span>
-                  <span className="font-mono text-[11px] text-zinc-700">
-                    {new Date(activeVersion.uploaded_at).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-sans text-[#555550]">
+                    Verify all 4 checklist points before issuing approval or requesting a client correction.
+                  </p>
 
-              {/* Action Buttons */}
-              <div className="mt-5 pt-4 border-t border-zinc-100 space-y-2.5">
-                {isApproved ? (
-                  <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs font-semibold text-emerald-900">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="block font-bold">Document Approved</span>
-                      <span className="text-[11px] text-emerald-700 font-normal">Audit sign-off logged and locked in compliance ledger.</span>
-                    </div>
-                  </div>
-                ) : isCorrection ? (
-                  <div className="p-3.5 bg-rose-50/80 border border-rose-200 rounded-xl space-y-2 text-xs text-rose-950">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                      <span>Correction Notice Sent to Client</span>
-                    </div>
-                    <p className="font-medium bg-white/90 p-2.5 rounded-lg border border-rose-200/80 leading-relaxed text-zinc-800 text-[11px]">
-                      &ldquo;{document.current_review?.comment || 'Client has been notified to correct and re-upload.'}&rdquo;
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       onClick={() => setIsCorrectionOpen(true)}
-                      className="w-full py-2.5 px-3 bg-white hover:bg-rose-50/60 text-rose-700 border border-rose-200 hover:border-rose-300 font-semibold text-xs rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-2.5 px-3 border border-[#E03E1A] bg-white text-[#C2410C] hover:bg-orange-50 text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#E03E1A]" />
                       <span>Request Correction</span>
                     </button>
 
                     <button
                       onClick={() => setIsApproveOpen(true)}
-                      className="w-full py-2.5 px-3 bg-zinc-950 hover:bg-zinc-800 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-2.5 px-3 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Approve Document</span>
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* Prototype Review Checklist */}
-            <ReviewChecklist />
+            {/* Document Audit Trail Summary */}
+            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs space-y-3">
+              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
+                AUDIT TRAIL PROGRESSION
+              </span>
 
-            {/* AI Review Assistant */}
-            <AIReviewAssistant document={document} />
+              <div className="space-y-3 pt-1">
+                {document.audit_logs?.slice(0, 4).map((log, idx) => (
+                  <div key={idx} className="border-l-2 border-[#111110] pl-3 space-y-0.5 text-[11px]">
+                    <div className="flex justify-between text-[#777770] text-[10px]">
+                      <span className="font-bold text-[#111110]">{log.action}</span>
+                      <span>{new Date(log.created_at).toLocaleDateString('en-GB')}</span>
+                    </div>
+                    <div className="text-[#555550]">
+                      By {log.performed_by_name} ({log.performed_by_role})
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
