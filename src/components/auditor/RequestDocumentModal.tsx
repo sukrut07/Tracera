@@ -198,9 +198,11 @@ export function RequestDocumentModal({
               className="w-full px-3 py-2 bg-white border-2 border-[#0A0A0A] focus:outline-none text-[#0A0A0A] font-bold"
             >
               <option value="PURCHASE_REGISTER">Purchase Register (Consolidated GSTR-2B)</option>
-              <option value="BANK_STATEMENT">Official Bank Statement (Q1/Q2)</option>
+              <option value="SALES_REGISTER">Sales Register (GSTR-1 Rec)</option>
+              <option value="BANK_STATEMENT">Official Bank Statement</option>
+              <option value="GST_DOCUMENT">GST Return / Filing Acknowledgement</option>
+              <option value="EXPENSE_SUMMARY">Expense Summary & Ledger Breakdown</option>
               <option value="INVOICE">Tax Invoices / Sample Vouchers</option>
-              <option value="GST_DOCUMENT">GST Filing Acknowledgement / Recs</option>
               <option value="TDS_CERTIFICATE">TDS Certificate (Form 16A / 26AS)</option>
               <option value="FIXED_ASSET_REGISTER">Fixed Asset Register (CARO 2020)</option>
               <option value="OTHER">Other Custom Working Paper</option>

@@ -26,11 +26,27 @@ import {
   TaskPriority,
 } from '@/types';
 
-const DB_DIR = path.join(process.cwd(), '.data');
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DB_DIR = isVercel ? path.join('/tmp', '.data') : path.join(process.cwd(), '.data');
 const DB_PATH = path.join(DB_DIR, 'tracera.db');
 
+// Ensure DB directory exists
 if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  } catch (err) {
+    console.warn('DB_DIR creation notice:', err);
+  }
+}
+
+// If running in serverless and pre-bundled DB exists in workspace, copy to /tmp
+if (isVercel) {
+  try {
+    const bundledDb = path.join(process.cwd(), '.data', 'tracera.db');
+    if (fs.existsSync(bundledDb) && !fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(bundledDb, DB_PATH);
+    }
+  } catch {}
 }
 
 // Global DB instance
@@ -48,11 +64,19 @@ export function getDb(): Database.Database {
 
 function initSchema(db: Database.Database) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS firms (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      code TEXT UNIQUE NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT,
       company_name TEXT NOT NULL,
+      firm_id TEXT REFERENCES firms(id) DEFAULT 'firm-abc',
       financial_year TEXT NOT NULL DEFAULT '2024-25',
       gstin TEXT,
       pan TEXT,
@@ -395,15 +419,20 @@ function safeAddColumns(db: Database.Database) {
   ensureCol('clients', 'industry', 'TEXT');
   ensureCol('clients', 'assigned_auditor', 'TEXT');
   ensureCol('clients', 'status', "TEXT NOT NULL DEFAULT 'ACTIVE'");
+  ensureCol('clients', 'firm_id', "TEXT DEFAULT 'firm-abc'");
 
   ensureCol('users', 'organization', 'TEXT');
   ensureCol('users', 'phone', 'TEXT');
   ensureCol('users', 'firebase_uid', 'TEXT');
   ensureCol('users', 'password_hash', 'TEXT');
+  ensureCol('users', 'firm_id', "TEXT DEFAULT 'firm-abc'");
 
   ensureCol('documents', 'engagement_id', 'TEXT');
   ensureCol('documents', 'source_channel', "TEXT DEFAULT 'PORTAL'");
   ensureCol('documents', 'description', 'TEXT');
+  ensureCol('documents', 'firm_id', "TEXT DEFAULT 'firm-abc'");
+
+  ensureCol('engagements', 'firm_id', "TEXT DEFAULT 'firm-abc'");
 
   ensureCol('audit_logs', 'document_id', 'TEXT');
   ensureCol('audit_logs', 'engagement_id', 'TEXT');
@@ -415,69 +444,115 @@ function safeAddColumns(db: Database.Database) {
 }
 
 /**
- * Seeds ONLY the 4 demo auth accounts (no business data).
- * Business data (clients, engagements, documents) is created exclusively
- * through the UI. Runs only when the users table is empty.
+ * Seeds Firm A (ABC & Co.) and Firm B (XYZ & Co.) with demo accounts for multi-firm tenant isolation.
  */
 function seedSystemUsers(db: Database.Database) {
-  // Always check for the explicitly configured bootstrap admin. This must
-  // also work for an existing database that already has ordinary users.
   seedBootstrapAdmin(db);
 
   const now = new Date().toISOString();
   const demoHash = hashPassword('Demo@123456');
-  const demoClientId = 'demo-client-001';
 
-  // Seed or ensure demo auditor first so we can assign to client
+  // ── 1. Seed Multi-Tenant CA Firms ─────────────────────────────────────────
+  db.prepare(`
+    INSERT INTO firms (id, name, code, created_at)
+    VALUES ('firm-abc', 'ABC & Co.', 'ABC', ?)
+    ON CONFLICT(id) DO UPDATE SET name = excluded.name
+  `).run(now);
+
+  db.prepare(`
+    INSERT INTO firms (id, name, code, created_at)
+    VALUES ('firm-xyz', 'XYZ & Co.', 'XYZ', ?)
+    ON CONFLICT(id) DO UPDATE SET name = excluded.name
+  `).run(now);
+
+  // ── 2. Seed Firm A (ABC & Co.) Users & Clients ───────────────────────────
+  const demoClientId = 'demo-client-001';
   const auditorRow = db.prepare("SELECT id FROM users WHERE email = 'auditor@demo.com'").get() as { id: string } | undefined;
   const auditorId = auditorRow?.id || 'sys-auditor-001';
   if (!auditorRow) {
     db.prepare(`
-      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
-      VALUES (?, 'Auditor Rahul', 'auditor@demo.com', 'AUDITOR', null, 'TRACERA Firm', ?, ?)
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES (?, 'Auditor Rahul', 'auditor@demo.com', 'AUDITOR', null, 'ABC & Co.', 'firm-abc', ?, ?)
     `).run(auditorId, demoHash, now);
   } else {
-    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, auditorId);
+    db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-abc', organization = 'ABC & Co.' WHERE id = ?").run(demoHash, auditorId);
   }
 
-  // Ensure default demo client exists and links to auditor
+  // Firm A client
   db.prepare(`
-    INSERT INTO clients (id, name, email, company_name, financial_year, status, assigned_auditor, created_at, updated_at)
-    VALUES (?, 'Acme Corp', 'client@demo.com', 'Acme Corp Pvt Ltd', '2024-25', 'ACTIVE', ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET assigned_auditor = excluded.assigned_auditor
+    INSERT INTO clients (id, name, email, company_name, financial_year, status, assigned_auditor, firm_id, created_at, updated_at)
+    VALUES (?, 'Acme Corp', 'client@demo.com', 'Acme Corp Pvt Ltd', '2024-25', 'ACTIVE', ?, 'firm-abc', ?, ?)
+    ON CONFLICT(id) DO UPDATE SET assigned_auditor = excluded.assigned_auditor, firm_id = 'firm-abc'
   `).run(demoClientId, auditorId, now, now);
 
-  // Seed or update demo client user
   const clientRow = db.prepare("SELECT id FROM users WHERE email = 'client@demo.com'").get() as { id: string } | undefined;
   if (clientRow) {
-    db.prepare("UPDATE users SET client_id = ?, password_hash = ? WHERE id = ?").run(demoClientId, demoHash, clientRow.id);
+    db.prepare("UPDATE users SET client_id = ?, password_hash = ?, firm_id = 'firm-abc' WHERE id = ?").run(demoClientId, demoHash, clientRow.id);
   } else {
     db.prepare(`
-      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
-      VALUES ('sys-client-001', 'Client Portal', 'client@demo.com', 'CLIENT', ?, 'Acme Corp Pvt Ltd', ?, ?)
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-client-001', 'Client Portal', 'client@demo.com', 'CLIENT', ?, 'Acme Corp Pvt Ltd', 'firm-abc', ?, ?)
     `).run(demoClientId, demoHash, now);
   }
 
-  // Seed or update demo partner
+  // Firm A partner & admin
   const partnerRow = db.prepare("SELECT id FROM users WHERE email = 'partner@demo.com'").get() as { id: string } | undefined;
   if (!partnerRow) {
     db.prepare(`
-      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
-      VALUES ('sys-partner-001', 'Partner Vikram', 'partner@demo.com', 'PARTNER', null, 'TRACERA Firm', ?, ?)
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-partner-001', 'Partner Vikram', 'partner@demo.com', 'PARTNER', null, 'ABC & Co.', 'firm-abc', ?, ?)
     `).run(demoHash, now);
   } else {
-    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, partnerRow.id);
+    db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-abc' WHERE id = ?").run(demoHash, partnerRow.id);
   }
 
-  // Seed or update demo admin
   const adminRow = db.prepare("SELECT id FROM users WHERE email = 'admin@demo.com'").get() as { id: string } | undefined;
   if (!adminRow) {
     db.prepare(`
-      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
-      VALUES ('sys-admin-001', 'Practice Admin', 'admin@demo.com', 'ADMIN', null, 'TRACERA Firm', ?, ?)
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-admin-001', 'Practice Admin', 'admin@demo.com', 'ADMIN', null, 'ABC & Co.', 'firm-abc', ?, ?)
     `).run(demoHash, now);
   } else {
-    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, adminRow.id);
+    db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-abc' WHERE id = ?").run(demoHash, adminRow.id);
+  }
+
+  // ── 3. Seed Firm B (XYZ & Co.) Users & Clients ───────────────────────────
+  const auditorXyzRow = db.prepare("SELECT id FROM users WHERE email = 'auditor@xyz.com'").get() as { id: string } | undefined;
+  const auditorXyzId = auditorXyzRow?.id || 'sys-auditor-xyz';
+  if (!auditorXyzRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES (?, 'Auditor Priya (XYZ)', 'auditor@xyz.com', 'AUDITOR', null, 'XYZ & Co.', 'firm-xyz', ?, ?)
+    `).run(auditorXyzId, demoHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-xyz', organization = 'XYZ & Co.' WHERE id = ?").run(demoHash, auditorXyzId);
+  }
+
+  const clientXyzId = 'client-xyz-001';
+  db.prepare(`
+    INSERT INTO clients (id, name, email, company_name, financial_year, status, assigned_auditor, firm_id, created_at, updated_at)
+    VALUES (?, 'Zenith Technologies', 'client@xyz.com', 'Zenith Tech Labs Ltd', '2024-25', 'ACTIVE', ?, 'firm-xyz', ?, ?)
+    ON CONFLICT(id) DO UPDATE SET assigned_auditor = excluded.assigned_auditor, firm_id = 'firm-xyz'
+  `).run(clientXyzId, auditorXyzId, now, now);
+
+  const clientXyzUser = db.prepare("SELECT id FROM users WHERE email = 'client@xyz.com'").get() as { id: string } | undefined;
+  if (clientXyzUser) {
+    db.prepare("UPDATE users SET client_id = ?, password_hash = ?, firm_id = 'firm-xyz' WHERE id = ?").run(clientXyzId, demoHash, clientXyzUser.id);
+  } else {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-client-xyz', 'Zenith Client Portal', 'client@xyz.com', 'CLIENT', ?, 'Zenith Tech Labs Ltd', 'firm-xyz', ?, ?)
+    `).run(clientXyzId, demoHash, now);
+  }
+
+  const partnerXyzRow = db.prepare("SELECT id FROM users WHERE email = 'partner@xyz.com'").get() as { id: string } | undefined;
+  if (!partnerXyzRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-partner-xyz', 'Partner Suresh (XYZ)', 'partner@xyz.com', 'PARTNER', null, 'XYZ & Co.', 'firm-xyz', ?, ?)
+    `).run(demoHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-xyz' WHERE id = ?").run(demoHash, partnerXyzRow.id);
   }
 }
 
@@ -523,7 +598,7 @@ function _unusedSeedRef() {
 export function getUserByEmail(email: string): UserProfile | null {
   const db = getDb();
   const row = db.prepare(`
-    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, created_at
+    SELECT id, name, email, role, client_id, organization, firm_id, phone, firebase_uid, created_at
     FROM users WHERE email = ? COLLATE NOCASE
   `).get(email) as UserProfile | undefined;
   return row || null;
@@ -532,7 +607,7 @@ export function getUserByEmail(email: string): UserProfile | null {
 export function getUserById(id: string): UserProfile | null {
   const db = getDb();
   const row = db.prepare(`
-    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, created_at
+    SELECT id, name, email, role, client_id, organization, firm_id, phone, firebase_uid, created_at
     FROM users WHERE id = ?
   `).get(id) as UserProfile | undefined;
   return row || null;
@@ -542,14 +617,17 @@ export function getUserById(id: string): UserProfile | null {
 export function getUserAuthByEmail(email: string): (UserProfile & { password_hash: string | null }) | null {
   const db = getDb();
   const row = db.prepare(`
-    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, password_hash, created_at
+    SELECT id, name, email, role, client_id, organization, firm_id, phone, firebase_uid, password_hash, created_at
     FROM users WHERE email = ? COLLATE NOCASE
   `).get(email) as (UserProfile & { password_hash: string | null }) | undefined;
   return row || null;
 }
 
-export function getClients(): Client[] {
+export function getClients(firmId?: string): Client[] {
   const db = getDb();
+  if (firmId) {
+    return db.prepare('SELECT * FROM clients WHERE firm_id = ? ORDER BY name ASC').all(firmId) as Client[];
+  }
   return db.prepare('SELECT * FROM clients ORDER BY name ASC').all() as Client[];
 }
 
@@ -563,9 +641,10 @@ export function createClient(data: Partial<Client> & { name: string; company_nam
   const db = getDb();
   const id = data.id || crypto.randomUUID();
   const now = new Date().toISOString();
+  const firmId = data.firm_id || 'firm-abc';
   db.prepare(`
-    INSERT INTO clients (id, name, email, company_name, gstin, pan, financial_year, phone, address, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO clients (id, name, email, company_name, gstin, pan, financial_year, phone, address, firm_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     data.name.trim(),
@@ -576,6 +655,7 @@ export function createClient(data: Partial<Client> & { name: string; company_nam
     data.financial_year,
     data.phone?.trim() || null,
     data.address?.trim() || null,
+    firmId,
     now,
     now
   );
@@ -588,6 +668,7 @@ export function getDocuments(filters?: {
   documentType?: DocumentType;
   search?: string;
   engagementId?: string;
+  firmId?: string;
 }): AuditDocument[] {
   const db = getDb();
   let query = `
@@ -604,6 +685,11 @@ export function getDocuments(filters?: {
     WHERE 1=1
   `;
   const params: unknown[] = [];
+
+  if (filters?.firmId) {
+    query += ' AND d.firm_id = ?';
+    params.push(filters.firmId);
+  }
 
   if (filters?.clientId) {
     query += ' AND d.client_id = ?';
@@ -638,6 +724,7 @@ export function getDocuments(filters?: {
   return rows.map((row) => ({
     id: row.id,
     client_id: row.client_id,
+    firm_id: row.firm_id || 'firm-abc',
     engagement_id: row.engagement_id || null,
     title: row.title,
     document_type: row.document_type as DocumentType,
@@ -775,6 +862,7 @@ export function getDocumentById(id: string): AuditDocument | null {
   return {
     id: docRow.id,
     client_id: docRow.client_id,
+    firm_id: docRow.firm_id || 'firm-abc',
     engagement_id: docRow.engagement_id || null,
     title: docRow.title,
     document_type: docRow.document_type as DocumentType,

@@ -145,11 +145,13 @@ export function UploadDocumentModal({
                 onChange={(e) => setDocumentType(e.target.value as DocumentType)}
               >
                 <option value="PURCHASE_REGISTER">Purchase Register</option>
+                <option value="SALES_REGISTER">Sales Register</option>
                 <option value="BANK_STATEMENT">Bank Statement</option>
+                <option value="GST_DOCUMENT">GST Return / Document</option>
+                <option value="EXPENSE_SUMMARY">Expense Summary</option>
                 <option value="INVOICE">Tax Invoice</option>
-                <option value="GST_DOCUMENT">GST Document / Return</option>
                 <option value="TDS_CERTIFICATE">TDS Certificate (Form 16A / 26AS)</option>
-                <option value="OTHER">Other Supporting Ledger</option>
+                <option value="OTHER">Other Supporting Document</option>
               </FormSelect>
             </div>
 

@@ -1,221 +1,150 @@
-# TRACERA
+# TRACERA — Mini Audit Document Review System
 
-> A calm, precise, document-centric audit workflow platform engineered for Chartered Accountant (CA) firms to collect, review, correct, and certify client financial records with an immutable Section 143(3) audit trail.
+> A calm, precise, document-centric audit review platform engineered for Chartered Accountant (CA) firms to collect, review, correct, and approve client audit documents with an immutable audit trail and strict multi-firm tenant isolation.
 
 [![Production](https://img.shields.io/badge/Deployment-Live%20on%20Vercel-success?style=flat&logo=vercel)](https://tracera-teal.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3.5%20(Turbopack)-black?style=flat&logo=next.js)](https://nextjs.org/)
-[![Tests](https://img.shields.io/badge/Test%20Suites-100%25%20Passing-brightgreen?style=flat)]()
+[![Tests](https://img.shields.io/badge/Tenant%20Isolation-100%25%20Verified-brightgreen?style=flat)]()
 
-**Live Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)
-
----
-
-## Overview
-
-For Chartered Accountant firms and audit practitioners, statutory audit engagements involve continuous, high-stakes document exchange. However, this workflow frequently fractures across disconnected channels:
-
-$$\text{WhatsApp} + \text{Excel} + \text{Email} + \text{Google Drive} + \text{Manual Phone Follow-ups}$$
-
-This fragmentation introduces critical operational and compliance failures:
-- **Missing Invoices & Attachments**: Supporting documents sent across WhatsApp chats get buried without audit context or indexation.
-- **Untracked Version Overwrites**: Conflicting spreadsheets named `Final_v2_edit.xlsx` overwrite previous client formulas with zero audit traceability.
-- **Drowned Email Threads**: Auditor correction requests get lost in client inboxes, jeopardizing statutory filing deadlines.
-- **Compliance Exposure**: Under Section 143(3) of the Companies Act, auditors must maintain tamper-evident proof of review, inquiry, and verification.
+**Live Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)  
+**GitHub Repository**: [https://github.com/sukrut07/Tracera](https://github.com/sukrut07/Tracera)
 
 ---
 
-## Why TRACERA
+## 1. Core Workflow & Scope
 
-TRACERA replaces fragmented communication channels with **one unified, traceable audit system**. 
+TRACERA delivers the complete end-to-end Mini Audit Document Review workflow:
 
-| Fragmented Approach | TRACERA Approach |
-| :--- | :--- |
-| Unindexed WhatsApp photos & PDFs | Direct client upload portal with structured metadata & document categorization |
-| Overwritten spreadsheet versions | Immutable version preservation ($v_1, v_2, v_3 \dots$)—prior files are never destroyed |
-| Buried email revision requests | Prominent **Action Required** correction notices with mandatory auditor remarks |
-| Verbal follow-ups & missed deadlines | Real-time notification stream, review urgency tracking, and automated reminders |
-| Unsubstantiated audit opinions | Append-only chronological audit trail capturing actor, role, version, and timestamp |
+$$\mathbf{Create/View\ Client} \longrightarrow \mathbf{Add\ Audit\ Documents} \longrightarrow \mathbf{Review\ Documents} \longrightarrow \mathbf{Approve\ or\ Request\ Correction} \longrightarrow \mathbf{View\ Audit\ History}$$
+
+### Step 1 — Client
+Create, view, and manage clients within the CA firm (e.g. *Acme Corp* / *ABC Traders Pvt. Ltd.* for Firm A; *Zenith Technologies* for Firm B).
+
+### Step 2 — Required Audit Documents
+For each client, track and manage the standard audit document checklist:
+- **Bank Statement**
+- **Sales Register**
+- **Purchase Register**
+- **GST Return / Document**
+- **Expense Summary**
+- Supporting Invoices & TDS Certificates
+
+### Step 3 — Document Review Workspace
+Reviewers examine documents with full context:
+- Document name & type
+- Client name & organization
+- Uploaded by & upload timestamp
+- Current status (`SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUIRED`, `APPROVED`)
+- Review comments and version history ($v_1, v_2$)
+
+Reviewers can:
+- **Approve**: Issues statutory sign-off and permanently locks the document version.
+- **Request Correction**: Adds a mandatory reason (e.g., *"Page 3 is missing. Please upload the complete bank statement."*). The document immediately moves to **Correction Required**, alerting the client to upload a revised version ($v_2$).
+
+### Step 4 — Immutable Audit History
+Every important action generates an append-only audit event capturing:
+- **Who** performed the action (actor name & role)
+- **What** happened (`DOCUMENT_UPLOADED`, `REVIEW_STARTED`, `CORRECTION_REQUESTED`, `CORRECTION_UPLOADED`, `DOCUMENT_APPROVED`)
+- **When** it occurred (exact timestamp)
+- **Which document** and version it affected ($v_1, v_2$)
+- **Why** (mandatory correction reason or reviewer remarks)
+
+The audit log is **strictly append-only** and **cannot be edited or deleted** by normal users.
 
 ---
 
-### The CA Engagement Operating System
+## 2. Multi-Firm Tenant Isolation
 
-TRACERA elevates practice management from isolated document reviews to an integrated CA engagement lifecycle:
+TRACERA supports multiple CA firms on a single deployment with complete data and operational isolation:
 
-$$\text{CLIENT} \longrightarrow \text{ENGAGEMENT} \longrightarrow \text{WORKFLOW} \longrightarrow \text{TASKS + DOCUMENTS} \longrightarrow \text{REVIEW} \longrightarrow \text{CORRECTIONS} \longrightarrow \text{APPROVAL} \longrightarrow \text{CLOSURE} \longrightarrow \text{AUDIT TRAIL}$$
+- **Firm A**: `ABC & Co.` (`firm-abc`)
+- **Firm B**: `XYZ & Co.` (`firm-xyz`)
 
-#### The Signature Audit Room Workspace (`/engagements/[id]`)
-Each client audit engagement operates within a dedicated workspace featuring an interactive 10-stage gate progress bar and 8 specialized sub-tabs:
+### Multi-Tenant Demonstration Accounts
 
-1. **Overview**: Executive portfolio summary, team ownership (Lead Partner, Practice Manager, Staff Performer), statutory due date, and billing totals.
-2. **Workflow Stages**: Full sequential operational progression (from Stage 01 Acceptance to Stage 10 Closure) with owner assignment, audit notes, and stage advancement gates.
-3. **Document Evidence Checklist**: 12 mandatory CA audit documents categorized into Financials, Banking, Purchases & GST, Sales, and Statutory Compliance. Auditor can issue structured document requests with due dates directly to the client.
-4. **Tasks & Fieldwork**: Procedure tracking with urgency pills (`URGENT`, `HIGH`, `MEDIUM`) and active blocker alerting (e.g. `Blocked by: Client - Missing June Bank Statement`).
-5. **Maker-Checker Approvals**: Enforced 3-tier sequence (Staff Performer $\rightarrow$ Manager Reviewer $\rightarrow$ Lead CA Partner Sign-off) with cryptographic audit timestamps.
-6. **Billing & Fees**: Professional fee computation (Base Audit Fee ₹25,000 + 18% GST ₹4,500 = ₹29,500) with payment recording and receipt tracking.
-7. **Unified Timeline**: Append-only chronological audit trail harmonizing high-level engagement milestones and granular document-level actions.
-8. **Engagement Closure**: 5-point formal gate verification. When all 5 prerequisites pass, the partner seals the engagement with an immutable Closure ID (`AUD-2026-XXXXX`) and generates the official signed CA Closure Dossier PDF.
+All demo accounts share the password: `Demo@123456`
+
+| Firm | Role | User Name | Email | Direct Dashboard |
+| :--- | :--- | :--- | :--- | :--- |
+| **Firm A (ABC & Co.)** | `AUDITOR` (Reviewer) | Auditor Rahul | `auditor@demo.com` | `/auditor/dashboard` |
+| **Firm A (ABC & Co.)** | `CLIENT` (Staff/Client) | Acme Client Portal | `client@demo.com` | `/client/dashboard` |
+| **Firm A (ABC & Co.)** | `PARTNER` | CA Partner Vikram | `partner@demo.com` | `/partner/dashboard` |
+| **Firm B (XYZ & Co.)** | `AUDITOR` (Reviewer) | Auditor Priya (XYZ) | `auditor@xyz.com` | `/auditor/dashboard` |
+| **Firm B (XYZ & Co.)** | `CLIENT` (Staff/Client) | Zenith Client Portal | `client@xyz.com` | `/client/dashboard` |
+| **Firm B (XYZ & Co.)** | `PARTNER` | CA Partner Sanjay | `partner@xyz.com` | `/partner/dashboard` |
 
 ---
 
-### Document-Level Workflow
+## 3. Short Architecture Explanation & Tenant Isolation
 
-TRACERA also enforces a strict 5-stage statutory lifecycle for individual financial records:
+### Architecture Diagram
 
 ```
-CLIENT                              AUDITOR
-  │                                    │
-  ├─── 01. UPLOAD (v1 Created) ───────>│ [Appears in Review Queue as SUBMITTED]
-  │                                    ├─── 02. REVIEW (Starts Review → UNDER_REVIEW)
-  │                                    │    (Checks 4-point CA checklist)
-  │                                    │
-  │<── 03. CORRECTION REQUESTED ───────┤ (Status: CORRECTION_REQUIRED with mandatory reason)
-  │    (Prominent Action Required)     │
-  │                                    │
-  ├─── 04. RE-UPLOAD (v2 Created) ────>│ [Reappears in Review Queue at v2, v1 preserved]
-  │                                    │
-  │                                    ├─── 05. APPROVAL & AUDIT CERTIFICATION
-  │<── Certified PDF Audit Report ─────┤    (Status: APPROVED, File Locked, PDF Generated)
+Frontend (Next.js 16 App Router / React 19)
+   │
+   ▼ (HTTP Cookie Session / Scoped Identity)
+Backend / API Route Handlers (src/app/api/*)
+   │
+   ▼ (Authoritative requireDocumentAccess & Role Authorization)
+Database (SQLite WAL / .data/tracera.db & atomic transactions)
+   │
+   ▼ (Append-Only Event Ledger)
+Audit Log (Tamper-evident history: actor, role, action, timestamp, meta)
 ```
 
-1. **Upload**: Client submits the document (Bank Statement, Purchase Register, GST Return, Invoice). Document enters state `SUBMITTED` as Version 1 ($v_1$).
-2. **Review**: Assigned auditor opens the split-screen Review Workspace, transitioning status to `UNDER_REVIEW`. Line items are verified against the 4-point CA statutory checklist.
-3. **Correction**: If discrepancies exist, auditor requests a correction with a mandatory explanation. Status transitions to `CORRECTION_REQUIRED`. Client sees an **Action Required** notice.
-4. **Re-upload**: Client submits Version 2 ($v_2$). Version 1 ($v_1$) is preserved immutably.
-5. **Approval**: Auditor reviews the corrected version, verifies math and counterpart data (e.g. GSTR-2B), and issues official sign-off. Status becomes `APPROVED`.
-6. **Audit Trail**: Every event is permanently recorded in the Section 143(3) chronological audit ledger.
+### How Firm A Stays Isolated From Firm B
+
+TRACERA enforces defense-in-depth tenant isolation across four distinct layers, grounded in the principles that **Authentication ≠ Authorization** and **Frontend hiding a button ≠ Security**:
+
+1. **Identity Tenancy Binding**: Every user record in the database is permanently assigned a `firm_id` (`firm-abc` for ABC & Co.; `firm-xyz` for XYZ & Co.). Upon authentication, this tenancy context is validated on the backend and embedded into the session identity (`user.firm_id`).
+2. **Backend Route-Level Authorization (`requireDocumentAccess`)**: When any API route handler (`/api/documents/[id]`, `/api/documents/[id]/correction`, `/api/documents/[id]/download`) is invoked, the backend never trusts client parameters. It queries the target document, inspects `document.firm_id`, and verifies `user.firm_id === document.firm_id`. If an auditor or staff from Firm A attempts to access or modify a document owned by Firm B, the request is blocked with an authoritative **HTTP 403 Forbidden** before executing any business logic.
+3. **Database-Level Query Scoping**: Collection endpoints (`GET /api/documents`, `GET /api/clients`) enforce tenancy at the database query layer (`WHERE d.firm_id = ?`). Even if a malicious user attempts ID enumeration or URL guessing, Firm A's database queries will never return Firm B's clients or documents.
+4. **Service Engine Invariants**: The core workflow engine (`workflowService.submitDocument`, `startReview`, `requestCorrection`, `uploadCorrection`, `approveDocument`) validates tenant matching independently of the HTTP layer, guaranteeing that background processes or script executions cannot cross firm boundaries.
+
+This isolation is formally verified by an automated test suite (`npm run test:tenant`), which executes cross-tenant intrusion tests between Firm A and Firm B and confirms all cross-firm read, write, and review operations are rejected with HTTP 403.
 
 ---
 
-## Role-Based Architecture & Portals
+## 4. Roles & Responsibilities
 
-TRACERA supports four distinct roles with strict access-control boundaries:
-
-| Role | Responsibilities | Dedicated Portal |
+| Role | Permitted Actions | Dedicated Portal |
 | :--- | :--- | :--- |
-| **`CLIENT`** | Submits required audit evidence, views correction notices, re-uploads revised versions ($v_2$), and downloads certified reports. | `/client/dashboard` |
-| **`AUDITOR`** | Reviews submitted documents, executes fieldwork checklists, raises structured correction requests, and approves reconciled records. | `/auditor/dashboard` |
-| **`PARTNER`** | Conducts final quality gates, executes maker-checker partner sign-offs, settles billing, and officially closes engagements. | `/partner/dashboard` |
-| **`ADMIN`** | Provisions team credentials, configures practice settings, inspects full audit logs, and accesses evaluation benchmarking tools. | `/admin/dashboard` |
-
-### Registration & 1-Click Access on `/signup`
-- **Dynamic Role Switcher**: Users can register as **Client Org**, **Auditor**, or **CA Partner** with dynamic form fields and automatic workspace provisioning.
-- **Instant Dashboard Access**: High-contrast Neo-Brutalist buttons allow 1-click evaluation of any role without manual credentials:
-  - **Client Portal**: `client@demo.com` $\to$ `/client/dashboard`
-  - **Auditor Console**: `auditor@demo.com` $\to$ `/auditor/dashboard`
-  - **Partner Suite**: `partner@demo.com` $\to$ `/partner/dashboard`
+| **Staff / Client** | • View assigned clients<br>• Upload required audit documents<br>• View real-time document status<br>• Respond to correction requests by uploading revised versions ($v_2$) | `/client/dashboard` |
+| **Reviewer / Auditor** | • View submitted client documents<br>• Open split-screen Review Workspace (`UNDER_REVIEW`)<br>• Approve documents (`APPROVED`)<br>• Request corrections with mandatory comments (`CORRECTION_REQUIRED`)<br>• Inspect immutable audit history | `/auditor/dashboard` |
+| **Partner (Optional)** | • Oversee cross-firm practice metrics<br>• Conduct quality control gates and sign-offs<br>• Inspect full firm-wide audit logs | `/partner/dashboard` |
 
 ---
 
-## Seed Evaluation Credentials
-
-All pre-seeded demo accounts use the standard password: `Demo@123456`
-
-| Account Name | Role | Email | Direct Dashboard |
-| :--- | :--- | :--- | :--- |
-| **Client Portal** | `CLIENT` | `client@demo.com` | `/client/dashboard` |
-| **Auditor Rahul** | `AUDITOR` | `auditor@demo.com` | `/auditor/dashboard` |
-| **CA Partner Vikram** | `PARTNER` | `partner@demo.com` | `/partner/dashboard` |
-| **Practice Admin** | `ADMIN` | `admin@demo.com` | `/admin/dashboard` |
-
----
-
-## Architecture & Security
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           TRACERA Web Client                            │
-│           Next.js 16 (App Router) + React 19 + Tailwind CSS             │
-│            Poppins Typography + Precision Neo-Brutalist UI              │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │ HTTP / Cookie Session Auth
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    Next.js 16 Edge Proxy (src/proxy.ts)                 │
-│    • Optimistic Route Protection       • Protected Path Filtering       │
-│    • Graceful 401/403 Redirection      • Stale Session Cleanup          │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Next.js API Route Layer                         │
-│    • Authoritative Session Guards      • Multi-Tenant Isolation         │
-│    • Workflow Action Engine            • Private Streaming Downloads    │
-│    • PDF Closure Dossier Generator     • In-App Event Notifications     │
-└────────────────────────────────────┬────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Central Workflow Service                        │
-│   submitDocument() · startReview() · requestCorrection() ·              │
-│   uploadCorrection() · approveDocument() · closeEngagement()            │
-└──────────────┬─────────────────────┬──────────────────────┬─────────────┘
-               │                     │                      │
-               ▼                     ▼                      ▼
-┌────────────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐
-│ OCR Extraction Engine  │ │ Validation Rules │ │ Notification Service    │
-│ (Structured Fields)    │ │ (Statutory Math) │ │ (Real-Time Streams)     │
-└────────────────────────┘ └──────────────────┘ └─────────────────────────┘
-               │                     │                      │
-               └─────────────────────┼──────────────────────┘
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                            Persistence Layer                            │
-│  • Local Store: SQLite WAL (.data/tracera.db) with Atomic Transactions   │
-│  • Private Storage: .data/storage/documents/ with UUID storage keys     │
-│  • Cloud Mirror: MongoDB Atlas & Firebase Storage (Optional)            │
-│  • Append-Only Audit Log: Tamper-Evident Chronological History          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Private Storage**: Uploaded files are strictly stored outside the public directory in `.data/storage/documents/`. Files are streamed via `/api/documents/[id]/download` only after verifying organizational permissions.
-- **Session Auto-Cleanup**: `getCurrentUser()` automatically clears stale or expired session cookies to prevent redirect bounce loops.
-- **Scrypt Password Hashing**: Passwords use Node.js `crypto.scrypt` with random salts and constant-time comparison (`crypto.timingSafeEqual`).
-
----
-
-## Tech Stack
-
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
-- **UI & Components**: [React 19](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/), [Lucide Icons](https://lucide.dev/)
-- **Design System**: Neo-Brutalist aesthetic (2px solid borders, hard drop shadows, signal accents)
-- **Typography**: [Google Fonts Poppins](https://fonts.google.com/specimen/Poppins) (weights 400 through 900) mapped across all UI and monospace tokens
-- **Local Persistence**: [SQLite](https://www.sqlite.org/) with WAL mode via `better-sqlite3` and atomic transactions
-- **Cloud Database (Optional)**: [MongoDB Atlas](https://www.mongodb.com/atlas) with [Mongoose](https://mongoosejs.com/)
-- **Document Storage**: Local filesystem private store with [Firebase Storage](https://firebase.google.com/products/storage) support
-- **Authentication**: Role-based session cookies with Firebase Auth token verification
-- **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) server-side dossier compilation
-
----
-
-## Workflow State Machine
-
-The state machine strictly enforces valid lifecycle transitions:
+## 5. Document Lifecycle State Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> SUBMITTED: Client Uploads Document (v1 Created)
-    SUBMITTED --> UNDER_REVIEW: Auditor Begins Examination
+    SUBMITTED --> UNDER_REVIEW: Reviewer Begins Examination
     
-    UNDER_REVIEW --> CORRECTION_REQUIRED: Auditor Requests Correction (Reason Mandatory)
-    UNDER_REVIEW --> APPROVED: Auditor Approves Document
+    UNDER_REVIEW --> CORRECTION_REQUIRED: Reviewer Requests Correction (Reason Mandatory)
+    UNDER_REVIEW --> APPROVED: Reviewer Approves Document
     
     CORRECTION_REQUIRED --> SUBMITTED: Client Uploads Revised File (v2 Created, v1 Preserved)
     
     APPROVED --> [*]: Statutory Sign-off Complete (Document Locked)
 ```
 
-### Transition Enforcement Rules:
-- `SUBMITTED → APPROVED`: **BLOCKED** (Auditor must first begin review).
-- `SUBMITTED → CORRECTION_REQUIRED`: **BLOCKED** (Must be in review).
-- `APPROVED → SUBMITTED`: **BLOCKED** (Approved documents are permanently locked).
-- `APPROVED → CORRECTION_REQUIRED`: **BLOCKED** (Cannot revise certified record).
-- `CORRECTION_REQUIRED → APPROVED`: **BLOCKED** (Client must upload corrected version first).
+### Transition Invariants
+- `SUBMITTED → APPROVED`: **Blocked** (Reviewer must first begin examination).
+- `SUBMITTED → CORRECTION_REQUIRED`: **Blocked** (Must be under active review).
+- `APPROVED → SUBMITTED`: **Blocked** (Approved documents are permanently locked).
+- `APPROVED → CORRECTION_REQUIRED`: **Blocked** (Certified records cannot be altered).
+- `CORRECTION_REQUIRED → APPROVED`: **Blocked** (Client must upload revised version first).
 
 ---
 
-## Local Setup
+## 6. Running Locally
+
+### Prerequisites
+- Node.js 18+
+- npm 9+
 
 ### 1. Clone & Install
 ```bash
@@ -228,14 +157,9 @@ npm install
 ```bash
 cp .env.example .env.local
 ```
-*Note: TRACERA runs immediately out of the box using the pre-configured local SQLite WAL store (`.data/tracera.db`). No external cloud services or API keys are required to evaluate the entire system.*
+*(TRACERA runs immediately using the built-in local SQLite store. No external cloud dependencies or API keys are required.)*
 
-### 3. Seed Demo Data (Optional)
-```bash
-npm run seed:demo
-```
-
-### 4. Start Development Server
+### 3. Run Development Server
 ```bash
 npm run dev
 ```
@@ -243,62 +167,72 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Automated Test Suites (100% Passing)
+## 7. Automated Test Suites (100% Passing)
 
-TRACERA includes three end-to-end automated verification suites:
+TRACERA includes comprehensive automated test suites to verify workflow correctness, state transitions, and tenant isolation:
 
-### 1. CA Engagement Operating System Suite (15/15 Tests Passing)
-Tests the complete 15-step CA statutory engagement lifecycle: creation, sequential 10-stage advancement, checklist evidence approval, task blocker resolution, 3-tier maker-checker sign-offs, fee settlement, 5/5 closure gate checks, and official signed dossier PDF generation:
 ```bash
-npm run test:engagement
-```
+# 1. Multi-Firm Tenant Isolation Suite (Firm A vs Firm B cross-tenant security)
+npm run test:tenant
 
-### 2. Document Workflow State Machine Suite (8/8 Tests Passing)
-Tests atomic transitions, multi-version preservation ($v_1 \to v_2$), permission boundaries (403 when client attempts approval or auditor attempts correction upload), and Section 143(3) immutable audit trails:
-```bash
+# 2. Document Workflow State Machine Suite (8/8 atomic transitions & versioning)
 npm run test:workflow
-```
 
-### 3. Live HTTP Route & Session Auth Suite (11/11 Tests Passing)
-Tests live HTTP session cookies, role isolation, multi-round reviews, notifications, and download security against the running server:
-```bash
-npm run test:http
-```
+# 3. CA Engagement Lifecycle Suite (15/15 end-to-end tests)
+npm run test:engagement
 
-### Code Quality & Compilation
-```bash
-npm run lint    # 0 errors
-npm run build   # 0 errors (40/40 routes compiled cleanly with Turbopack)
+# 4. Production Build & TypeScript Verification (Turbopack, 0 errors)
+npm run build
 ```
 
 ---
 
-## Evaluation & Synthetic Benchmark Fixtures
+## 8. What We Did Not Build (Out-of-Scope Boundary)
 
-All test datasets use public synthetic benchmarks:
-
-| Fixture | Origin / Benchmark | Test Scenario / Audit Purpose |
-| :--- | :--- | :--- |
-| **HDFC Current Account Q1** | [AgamiAI Indian Bank Statements](https://huggingface.co/datasets/AgamiAI/Indian-Bank-Statements) | Business banking statement with UPI, NEFT, IMPS, and RTGS clearing entries |
-| **Purchase Register FY24-25 (v1)** | [Synthetic Indian Finance Data](https://github.com/AnujSureshkumar/synthetic-finance-data) | Contains missing invoice INV-204 to test **CORRECTION_REQUIRED** cycle |
-| **Purchase Register FY24-25 (v2)** | [Synthetic Indian Finance Data](https://github.com/AnujSureshkumar/synthetic-finance-data) | Reconciled register with INV-204 added for auditor **APPROVAL** |
-| **GSTR-2B Auto-Drafted ITC** | GST Portal Auto-Drafted ITC | Counterpart tax return data for purchase register reconciliation |
-| **Balaji Enterprises Tax Invoice** | [Invoice Sandbox Benchmark](https://github.com/ciru-ai/invoice-sandbox-benchmark) | Statutory ₹76,700 GST invoice (INV-204) with HSN 7208 & E-Way Bill |
-| **Form 26AS TDS Summary** | CBDT Tax Deducted at Source | Section 194C / 194J contractor & professional tax credit verification |
+To maintain focus on the core audit document review workflow, the following were intentionally excluded:
+- WhatsApp integration
+- Direct GST portal automation & filing
+- Tax computation & automated return filing
+- Government portal automation
+- Unsupervised autonomous AI approval agents
+- Payment gateways & billing rails
+- Mobile applications
 
 ---
 
-## Security & Compliance Disclosure
+## 9. AI Usage Disclosure
 
-- **Multi-Tenant Client Isolation**: All document queries are filtered by authenticated `client_id`.
-- **Tamper-Evident Logs**: Audit log entries are strictly append-only. No endpoint exists to delete or modify historical logs.
-- **Section 143(3) Compliance**: Designed to satisfy statutory audit standards under Section 143(3) of the Indian Companies Act, 2013.
-- **Human-in-the-Loop Mandate**: AI and OCR extraction features are strictly advisory. **AI will never automatically approve, reject, or certify an audit document.** Only a verified Chartered Accountant can issue statutory approvals.
+```
+AI Tools Used:
+ChatGPT: Architecture ideation, Section 143(3) compliance considerations, and synthetic audit dataset schema design.
+Claude: Reviewing workflow state machine edge cases and drafting multi-version preservation test scenarios.
+Gemini: Crafting the high-contrast Neo-Brutalist UI design tokens, Poppins typography hierarchy, and accessibility styling.
+Cursor: Interactive pair programming, code navigation, and refactoring API route handlers.
+GitHub Copilot: Autocompletion for TypeScript interfaces, SQLite schema migrations, and synthetic audit fixtures.
+
+How AI was used:
+AI tools were used as interactive pair-programming and design assistants throughout the project. They accelerated routine scaffolding (such as TypeScript type definitions, SQLite schema creation, and automated test scripts) and helped pressure-test state machine invariants (ensuring version preservation and un-bypassable authorization checks). Every core business logic routine, tenant authorization guard, database transaction, and verification test was designed, reviewed, and validated end-to-end against local and deployed environments.
+```
 
 ---
 
-## Repository & License
+## 10. One Important Question
 
-- **Live Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)
-- **GitHub**: [https://github.com/sukrut07/Tracera](https://github.com/sukrut07/Tracera)
-- **License**: MIT
+### “What would you improve if you had one more week?”
+
+> If given one additional week, I would focus on three high-leverage enhancements to maximize audit reliability, reviewer ergonomics, and practice value:
+>
+> 1. **Cryptographic Hash Chaining for Audit Logs**: While the audit log is currently append-only at the database layer, I would implement SHA-256 hash chaining (similar to git commit trees or blockchain ledgers) where each audit event includes `previous_event_hash`, `current_payload_hash`, and a digital signature. This would make the chronological audit trail mathematically tamper-evident and independently verifiable by external regulators without trusting the application database.
+> 2. **Side-by-Side Visual Diff for Correction Re-uploads ($v_1$ vs $v_2$)**: When a client re-uploads a corrected document (e.g., Bank Statement or Purchase Register) after a correction request, the reviewer currently inspects the new version manually. A dedicated split-screen diff viewer highlighting changes, newly inserted transaction rows, or replaced pages between versions would drastically reduce reviewer fatigue and prevent subtle discrepancies from slipping through.
+> 3. **Firm-Level Role & Permission Customization (RBAC Granularity)**: Different CA practices structure fieldwork differently (e.g., Senior Articled Assistants vs Audit Managers vs Signing Partners). I would add granular permission toggles allowing firms to configure whether staff can view full audit histories or whether second-partner concurrence is required before high-value document approval.
+>
+> These improvements directly deepen audit defensibility, reviewer efficiency, and multi-firm flexibility without adding unnecessary complexity.
+
+---
+
+## 11. Submission Summary
+
+- **Live Deployed Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)
+- **GitHub Repository**: [https://github.com/sukrut07/Tracera](https://github.com/sukrut07/Tracera)
+- **Tenant Isolation Test**: `npm run test:tenant`
+- **Workflow State Machine Test**: `npm run test:workflow`

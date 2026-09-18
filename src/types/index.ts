@@ -2,10 +2,13 @@ export type Role = 'CLIENT' | 'AUDITOR' | 'ADMIN' | 'PARTNER';
 
 export type DocumentType =
   | 'BANK_STATEMENT'
-  | 'INVOICE'
+  | 'SALES_REGISTER'
   | 'PURCHASE_REGISTER'
   | 'GST_DOCUMENT'
+  | 'EXPENSE_SUMMARY'
+  | 'INVOICE'
   | 'TDS_CERTIFICATE'
+  | 'FIXED_ASSET_REGISTER'
   | 'OTHER';
 
 export type DocumentStatus =
@@ -31,12 +34,20 @@ export type AuditAction =
   | 'ENGAGEMENT_CLOSED'
   | 'APPROVAL_SUBMITTED';
 
+export interface Firm {
+  id: string;
+  name: string;
+  code: string;
+  created_at: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   role: Role;
   client_id: string | null;
+  firm_id?: string | null;
   organization?: string | null;
   phone?: string | null;
   firebase_uid?: string | null;
@@ -48,6 +59,7 @@ export interface Client {
   name: string;
   email: string;
   company_name: string;
+  firm_id?: string | null;
   legal_name?: string | null;
   contact_person?: string | null;
   gstin?: string | null;
@@ -118,6 +130,7 @@ export interface AuditLog {
 export interface AuditDocument {
   id: string;
   client_id: string;
+  firm_id?: string | null;
   engagement_id?: string | null;
   title: string;
   document_type: DocumentType;

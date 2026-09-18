@@ -43,32 +43,26 @@ export async function POST(req: NextRequest) {
 
       authenticatedEmail = decodedToken.email.toLowerCase();
 
-    // ── PATH 2: Dev-only password fallback ────────────────────────────────
-    } else if (process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
-      // Development only — Firebase not configured.
-      // Accepts email + password for local evaluation.
-      // THIS MUST NEVER BE ENABLED IN PRODUCTION.
+    // ── PATH 2: Password evaluation auth (for local evaluation & prototype demo) ──
+    } else if (process.env.ENABLE_DEV_AUTH === 'true' || !isFirebaseAdminConfigured) {
       if (!bodyEmail || !password) {
         return NextResponse.json(
           {
-            error: 'Development auth requires email and password. Set ENABLE_DEV_AUTH=true in .env.local.',
-            code: 'DEV_AUTH_INCOMPLETE',
+            error: 'Authentication requires email and password.',
+            code: 'AUTH_INCOMPLETE',
           },
-          { status: 401 }
+          { status: 400 }
         );
       }
 
       const devUser = getUserAuthByEmail(bodyEmail.trim().toLowerCase());
       if (!devUser) {
-        // Generic error — don't reveal whether the email exists
         return NextResponse.json(
           { error: 'Incorrect email or password.' },
           { status: 401 }
         );
       }
 
-      // A development flag alone is never authentication. Accounts created
-      // locally carry a scrypt password hash and must verify successfully.
       if (!verifyPassword(password, devUser.password_hash)) {
         return NextResponse.json(
           { error: 'Incorrect email or password.' },

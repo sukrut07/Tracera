@@ -178,18 +178,28 @@ export async function requireEngagementAccess(user: UserProfile, engagementId: s
 
 /**
  * Validates that the authenticated user has access to a specific document.
- * CLIENT can only access their own client organization documents.
- * AUDITOR can only access assigned documents or documents in their assigned engagements/clients.
+ * 1. Multi-tenant isolation: A user from Firm A can NEVER access Firm B's documents.
+ * 2. CLIENT can only access their own client organization documents.
+ * 3. AUDITOR can only access assigned documents or documents in their assigned engagements/clients.
  */
 export async function requireDocumentAccess(user: UserProfile, documentId: string): Promise<void> {
-  if (user.role === 'ADMIN' || user.role === 'PARTNER') return;
   const db = getDb();
-  const doc = db.prepare('SELECT client_id, assigned_to FROM documents WHERE id = ?').get(documentId) as
-    | { client_id: string; assigned_to: string | null }
+  const doc = db.prepare('SELECT client_id, assigned_to, firm_id FROM documents WHERE id = ?').get(documentId) as
+    | { client_id: string; assigned_to: string | null; firm_id: string | null }
     | undefined;
   if (!doc) {
     throw Object.assign(new Error('Document not found.'), { status: 404 });
   }
+
+  // Cross-Firm Tenant Isolation Guard
+  const userFirm = user.firm_id || 'firm-abc';
+  const docFirm = doc.firm_id || 'firm-abc';
+  if (userFirm !== docFirm) {
+    throw Object.assign(new Error('Cross-firm access forbidden: Document belongs to another CA firm.'), { status: 403 });
+  }
+
+  if (user.role === 'ADMIN' || user.role === 'PARTNER') return;
+
   if (user.role === 'CLIENT') {
     if (doc.client_id !== user.client_id) {
       throw Object.assign(new Error('Access denied: You do not have permission to view this document.'), { status: 403 });
@@ -198,7 +208,7 @@ export async function requireDocumentAccess(user: UserProfile, documentId: strin
   }
   if (user.role === 'AUDITOR') {
     if (doc.assigned_to && doc.assigned_to !== user.id) {
-      const client = db.prepare('SELECT assigned_auditor FROM clients WHERE id = ?').get(doc.client_id) as { assigned_auditor: string | null } | undefined;
+      const client = db.prepare('SELECT assigned_auditor, firm_id FROM clients WHERE id = ?').get(doc.client_id) as { assigned_auditor: string | null; firm_id: string | null } | undefined;
       if (client?.assigned_auditor !== user.id) {
         throw Object.assign(new Error('Access denied: You are not assigned to review this document.'), { status: 403 });
       }

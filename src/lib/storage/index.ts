@@ -5,7 +5,10 @@ import crypto from 'crypto';
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.csv', '.xls', '.xlsx', '.doc', '.docx'];
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
-const PRIVATE_STORAGE_DIR = path.join(process.cwd(), '.data', 'storage', 'documents');
+const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const PRIVATE_STORAGE_DIR = isVercel
+  ? path.join('/tmp', '.data', 'storage', 'documents')
+  : path.join(process.cwd(), '.data', 'storage', 'documents');
 
 export async function saveUploadedFile(file: File): Promise<{
   fileName: string;

@@ -18,11 +18,14 @@ export async function GET(req: NextRequest) {
       clientId = user.client_id || 'NONE';
     }
 
+    const firmId = user.firm_id || 'firm-abc';
+
     const documents = getDocuments({
       clientId,
       status,
       documentType,
       search,
+      firmId,
     });
 
     const stats = getDashboardStats(user.role, user.client_id);

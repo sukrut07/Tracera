@@ -16,6 +16,13 @@ export async function GET(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
+    // Cross-firm tenant isolation check
+    const userFirm = user.firm_id || 'firm-abc';
+    const docFirm = document.firm_id || 'firm-abc';
+    if (userFirm !== docFirm) {
+      return NextResponse.json({ error: 'Cross-firm access forbidden: Document belongs to another CA firm' }, { status: 403 });
+    }
+
     // Role-based document ownership check
     if (user.role === 'CLIENT' && document.client_id !== user.client_id) {
       return NextResponse.json({ error: 'Forbidden: You do not have permission to view this document' }, { status: 403 });

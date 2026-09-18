@@ -53,6 +53,13 @@ export interface ApproveDocumentParams {
 }
 
 function assertAssignedReviewer(user: UserProfile, doc: AuditDocument) {
+  // Cross-firm tenant check
+  const userFirm = user.firm_id || 'firm-abc';
+  const docFirm = doc.firm_id || 'firm-abc';
+  if (userFirm !== docFirm) {
+    throw new WorkflowError(403, 'Cross-firm access forbidden: Document belongs to another CA firm');
+  }
+
   if (user.role === 'ADMIN') return;
   if (!doc.assigned_to) {
     throw new WorkflowError(403, 'This document has not been assigned to a reviewer');
@@ -91,6 +98,13 @@ export const workflowService = {
     const auditId2 = crypto.randomUUID();
     const now = new Date().toISOString();
 
+    const clientRow = db.prepare('SELECT firm_id FROM clients WHERE id = ?').get(params.clientId) as { firm_id: string | null } | undefined;
+    const clientFirm = clientRow?.firm_id || 'firm-abc';
+    const userFirm = user.firm_id || 'firm-abc';
+    if (user.role !== 'ADMIN' && userFirm !== clientFirm) {
+      throw new WorkflowError(403, 'Cross-firm access forbidden: Client belongs to another CA firm');
+    }
+
     // Assignment comes from the client configuration. Do not silently give a
     // newly submitted file to whichever auditor happens to be first in the DB.
     const configuredAuditor = db.prepare(`
@@ -105,9 +119,9 @@ export const workflowService = {
     const transaction = db.transaction(() => {
       // 1. Create document
       db.prepare(`
-        INSERT INTO documents (id, client_id, title, document_type, status, current_version, assigned_to, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'SUBMITTED', 1, ?, ?, ?)
-      `).run(docId, params.clientId, params.title.trim(), params.documentType, auditorId, now, now);
+        INSERT INTO documents (id, client_id, firm_id, title, document_type, status, current_version, assigned_to, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'SUBMITTED', 1, ?, ?, ?)
+      `).run(docId, params.clientId, clientFirm, params.title.trim(), params.documentType, auditorId, now, now);
 
       // 2. Create version 1
       db.prepare(`
@@ -374,6 +388,12 @@ export const workflowService = {
 
     const doc = getDocumentById(params.documentId);
     if (!doc) throw new WorkflowError(404, 'Document not found');
+
+    const userFirm = user.firm_id || 'firm-abc';
+    const docFirm = doc.firm_id || 'firm-abc';
+    if (userFirm !== docFirm) {
+      throw new WorkflowError(403, 'Cross-firm access forbidden: Document belongs to another CA firm');
+    }
 
     if (user.role === 'CLIENT' && user.client_id !== doc.client_id) {
       throw new WorkflowError(403, 'Forbidden: You do not own this document');
