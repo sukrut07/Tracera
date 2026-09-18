@@ -1,0 +1,9 @@
+HDFC BANK LIMITED - CURRENT ACCOUNT STATEMENT
+Account: 50200012345678
+Client: ABC Traders Private Limited
+Period: 01-Apr-2024 to 30-Jun-2024
+Opening Balance: INR 12,45,210.00
+Total Credits: INR 48,90,150.00
+Total Debits: INR 39,20,400.00
+Closing Balance: INR 22,14,960.00
+Status: RECONCILED WITH AUDIT BOOKS

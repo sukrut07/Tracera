@@ -1,0 +1,18 @@
+Field,Value
+Invoice Number,INV-204
+Invoice Date,2024-04-25
+Seller Name,Balaji Enterprises Private Limited
+Seller GSTIN,27AABTB3456J1Z9
+Buyer Name,ABC Traders Private Limited
+Buyer GSTIN,27AABCO1234F1Z1
+HSN/SAC Code,7208 (Flat-rolled products of iron or non-alloy steel)
+Item Description,Hot Rolled Steel Sheets 2.5mm
+Quantity,1 Metric Ton
+Rate (INR),65000.00
+Taxable Value,65000.00
+CGST Rate,9.0%
+CGST Amount,5850.00
+SGST Rate,9.0%
+SGST Amount,5850.00
+Total Invoice Value,76700.00
+E-Way Bill No,241098234190

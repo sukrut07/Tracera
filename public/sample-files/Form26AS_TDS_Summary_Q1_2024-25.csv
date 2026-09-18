@@ -1,0 +1,5 @@
+Deductor TAN,Deductor Name,Section,Transaction Date,Booking Date,Amount Paid / Credited (INR),Tax Deducted (INR),Tax Deposited (INR)
+MUMB12345C,Om Logistics Ltd,194C (Contractor),2024-04-05,2024-05-07,45000.00,900.00,900.00
+PUNB67890D,Apex Steel Fab Pvt Ltd,194C (Contractor),2024-04-12,2024-05-07,128000.00,2560.00,2560.00
+DELZ90123E,Zenith Electricals Ltd,194J (Professional),2024-04-18,2024-05-07,82000.00,8200.00,8200.00
+MUMB34567F,Balaji Enterprises Pvt Ltd,194C (Contractor),2024-04-25,2024-05-07,65000.00,1300.00,1300.00
