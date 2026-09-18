@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Clock, Eye, ArrowUpRight } from 'lucide-react';
+import { Clock, Eye, ArrowRight, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { AuditDocument, UserProfile } from '@/types';
-import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AppShell } from '@/components/layout/AppShell';
 
 export default function AuditorReviewsPage() {
@@ -12,33 +12,41 @@ export default function AuditorReviewsPage() {
   const [documents, setDocuments] = useState<AuditDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const res = await fetch('/api/documents');
-        const data = await res.json();
-        if (res.ok) {
-          // Filter to items needing auditor action (SUBMITTED or UNDER_REVIEW)
-          const reviewList = (data.documents || []).filter(
-            (d: AuditDocument) => d.status === 'SUBMITTED' || d.status === 'UNDER_REVIEW'
-          );
-          setDocuments(reviewList);
-          setCurrentUser(data.currentUser || null);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const loadData = useCallback(async (isInitial = false) => {
+    try {
+      if (isInitial) setLoading(true);
+      const res = await fetch('/api/documents');
+      const data = await res.json();
+      if (res.ok) {
+        const reviewList = (data.documents || []).filter(
+          (d: AuditDocument) => d.status === 'SUBMITTED' || d.status === 'UNDER_REVIEW'
+        );
+        setDocuments(reviewList);
+        setCurrentUser(data.currentUser || null);
       }
+    } catch (err) {
+      console.error('Failed to load review queue:', err);
+    } finally {
+      setLoading(false);
     }
-    loadData();
   }, []);
+
+  useEffect(() => {
+    loadData(true);
+    const timer = setInterval(() => loadData(false), 5000);
+    const onFocus = () => loadData(false);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [loadData]);
 
   return (
     <AppShell
       currentUser={
         currentUser || {
-          id: '2',
+          id: 'usr-auditor-001',
           name: 'Rahul Sharma',
           email: 'auditor@demo.com',
           role: 'AUDITOR',
@@ -47,72 +55,84 @@ export default function AuditorReviewsPage() {
         }
       }
     >
-      <div className="space-y-6">
-        <div className="border-b border-[#E5E5E0] pb-6">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold block mb-1">
-            AUDITOR OPERATIONS
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111110]">
-            Active Review Queue
-          </h1>
-          <p className="text-xs text-[#666660]">
-            Submissions currently waiting for auditor examination and statutory verification.
-          </p>
+      <div className="space-y-6 font-sans">
+        <div className="border-b-[3px] border-[#0A0A0A] pb-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] uppercase tracking-widest text-[#E73520] font-black block mb-1">
+              AUDITOR OPERATIONS
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0A0A0A] font-sans">
+              Active Review Queue
+            </h1>
+            <p className="text-xs text-[#555555] mt-1 font-medium">
+              Submissions currently waiting for auditor examination and statutory verification.
+            </p>
+          </div>
+
+          <button
+            onClick={() => loadData(false)}
+            title="Refresh review queue"
+            className="p-2 border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
-        <div className="border border-[#E5E5E0] bg-white overflow-x-auto">
-          <table className="w-full text-left border-collapse font-mono text-xs">
-            <thead>
-              <tr className="border-b border-[#E5E5E0] bg-[#FAFAF8] text-[10px] uppercase tracking-widest text-[#777770]">
-                <th className="py-3 px-4 font-bold">Client</th>
-                <th className="py-3 px-4 font-bold">Document</th>
-                <th className="py-3 px-4 font-bold">Version</th>
-                <th className="py-3 px-4 font-bold">Current State</th>
-                <th className="py-3 px-4 font-bold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E5E0]">
-              {documents.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-[#777770]">
-                    Review queue is clear. No documents pending review.
-                  </td>
+        <div className="neo-box-lg bg-white overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-sans text-xs">
+              <thead>
+                <tr className="border-b-2 border-[#0A0A0A] bg-[#F7F5EF] text-[11px] uppercase font-semibold tracking-[0.04em] text-[#111111]">
+                  <th className="py-3 px-4">CLIENT</th>
+                  <th className="py-3 px-4">DOCUMENT</th>
+                  <th className="py-3 px-4">VERSION</th>
+                  <th className="py-3 px-4">CURRENT STATE</th>
+                  <th className="py-3 px-4 text-right">ACTION</th>
                 </tr>
-              ) : (
-                documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-[#FAFAF8] transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-[#111110]">
-                      {doc.client?.name || 'ABC Traders Pvt Ltd'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Link
-                        href={`/auditor/documents/${doc.id}`}
-                        className="font-bold text-[#111110] hover:underline block truncate max-w-xs font-sans"
-                      >
-                        {doc.title}
-                      </Link>
-                      <span className="text-[10px] text-[#777770]">{doc.file_name}</span>
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-[#111110]">
-                      v{doc.current_version}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <DocumentStatusBadge status={doc.status} size="sm" />
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Link
-                        href={`/auditor/documents/${doc.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111110] text-white hover:bg-[#2A2A28] text-xs uppercase font-bold"
-                      >
-                        <span>Open Review</span>
-                        <ArrowUpRight className="w-3 h-3" />
-                      </Link>
+              </thead>
+              <tbody className="divide-y-2 divide-[#0A0A0A]">
+                {documents.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-[#555555]">
+                      Review queue is clear. No documents pending review.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  documents.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-[#F7F5EF] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[#0A0A0A]">
+                        {doc.client?.company_name || doc.client?.name || 'Client'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Link
+                          href={`/auditor/documents/${doc.id}`}
+                          className="font-bold text-[#0A0A0A] hover:text-[#E73520] hover:underline block truncate max-w-xs"
+                        >
+                          {doc.title}
+                        </Link>
+                        <span className="text-[10px] text-[#555555]">{doc.file_name}</span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-[#0A0A0A]">
+                        v{doc.current_version}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <StatusBadge status={doc.status} size="sm" />
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          href={`/auditor/documents/${doc.id}`}
+                          className="neo-btn bg-[#0A0A0A] text-white px-3 py-1.5 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5"
+                        >
+                          <span>REVIEW</span>
+                          <ArrowRight className="w-3 h-3 text-[#E73520]" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </AppShell>

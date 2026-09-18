@@ -5,7 +5,9 @@ export interface IUser {
   firebaseUid?: string;
   name: string;
   email: string;
-  role: 'CLIENT' | 'AUDITOR' | 'ADMIN';
+  role: 'CLIENT' | 'AUDITOR' | 'ADMIN' | 'PARTNER';
+  organization?: string;
+  phone?: string;
   clientId?: mongoose.Types.ObjectId | string;
   avatarUrl?: string;
   createdAt: Date;
@@ -17,7 +19,9 @@ const UserSchema = new Schema<IUser>(
     firebaseUid: { type: String, sparse: true, index: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
-    role: { type: String, enum: ['CLIENT', 'AUDITOR', 'ADMIN'], required: true },
+    role: { type: String, enum: ['CLIENT', 'AUDITOR', 'ADMIN', 'PARTNER'], required: true },
+    organization: { type: String },
+    phone: { type: String },
     clientId: { type: Schema.Types.ObjectId, ref: 'Client' },
     avatarUrl: { type: String },
   },

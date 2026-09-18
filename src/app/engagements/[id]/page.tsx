@@ -39,12 +39,15 @@ import {
   TaskStatus,
   TaskPriority,
 } from '@/types';
+import { CreateIssueModal } from '@/components/engagements/CreateIssueModal';
+import { RequestDocumentModal } from '@/components/auditor/RequestDocumentModal';
 
 type TabType =
   | 'overview'
   | 'stages'
   | 'checklist'
   | 'tasks'
+  | 'issues'
   | 'approvals'
   | 'billing'
   | 'timeline'
@@ -94,9 +97,32 @@ export default function EngagementAuditRoomPage() {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closureSummary, setClosureSummary] = useState('');
 
+  const [createIssueModalOpen, setCreateIssueModalOpen] = useState(false);
+  const [requestMultiChannelModalOpen, setRequestMultiChannelModalOpen] = useState(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleToggleIssue = async (issueId: string, currentStatus: string) => {
+    if (!engagement) return;
+    const newStatus = currentStatus === 'RESOLVED' ? 'OPEN' : 'RESOLVED';
+    try {
+      const res = await fetch(`/api/engagements/${engagement.id}/issues`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issueId, status: newStatus }),
+      });
+      if (res.ok) {
+        showToast(`Issue status updated to ${newStatus}`);
+        await fetchEngagementData();
+      } else {
+        showToast('Failed to update issue');
+      }
+    } catch {
+      showToast('Error updating issue');
+    }
   };
 
   const fetchEngagementData = useCallback(async () => {
@@ -373,10 +399,12 @@ export default function EngagementAuditRoomPage() {
     );
   }
 
-  const isAuditorOrAdmin = currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN';
+  const isAuditorOrAdmin = currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'PARTNER';
   const stages = engagement.stages || [];
   const checklists = engagement.checklists || [];
   const tasks = engagement.tasks || [];
+  const issues = engagement.issues || [];
+  const openIssues = issues.filter((i) => i.status === 'OPEN' || i.status === 'IN_PROGRESS');
   const approvals = engagement.approvals || [];
   const documents = engagement.documents || [];
   const auditLogs = engagement.audit_logs || [];
@@ -555,6 +583,7 @@ export default function EngagementAuditRoomPage() {
             { key: 'stages', label: `Stages (${stages.length})`, icon: Clock },
             { key: 'checklist', label: `Evidence Checklist (${approvedDocsCount}/${checklists.length})`, icon: FileText },
             { key: 'tasks', label: `Procedures & Tasks (${tasks.length})`, icon: CheckCircle2, badge: blockedTasks.length > 0 ? `${blockedTasks.length} BLOCKED` : undefined },
+            { key: 'issues', label: `Issues & Blockers (${issues.length})`, icon: AlertTriangle, badge: openIssues.length > 0 ? `${openIssues.length} OPEN` : undefined },
             { key: 'approvals', label: 'Maker-Checker Sign-off', icon: Shield },
             { key: 'billing', label: `Billing & Fees (${engagement.billing_status})`, icon: DollarSign },
             { key: 'timeline', label: `Unified Timeline (${auditLogs.length})`, icon: Clock },
@@ -823,8 +852,19 @@ export default function EngagementAuditRoomPage() {
                   Mandatory statutory audit documents required prior to final review and sign-off.
                 </p>
               </div>
-              <div className="text-xs font-mono text-[#777770]">
-                Verified: <span className="font-bold text-emerald-700">{approvedDocsCount}</span> of {checklists.length}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-[#777770]">
+                  Verified: <strong className="text-emerald-700">{approvedDocsCount}</strong> of {checklists.length}
+                </span>
+                {isAuditorOrAdmin && (
+                  <button
+                    onClick={() => setRequestMultiChannelModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111110] text-white rounded text-xs font-mono hover:bg-[#2A2A28] transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ REQUEST DOCUMENT</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -994,6 +1034,139 @@ export default function EngagementAuditRoomPage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* TAB: ENGAGEMENT ISSUES & BLOCKERS */}
+        {activeTab === 'issues' && (
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#E5E5E0] pb-4 gap-3">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-[#111110]">Engagement Issues & Blockers</h3>
+                <p className="text-xs font-mono text-[#777770]">
+                  Unresolved issues directly block engagement sign-off and final closure verification.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-[#777770]">
+                  Open: <strong className={openIssues.length > 0 ? 'text-rose-600' : 'text-emerald-700'}>{openIssues.length}</strong> of {issues.length}
+                </span>
+                {isAuditorOrAdmin && engagement.status !== 'CLOSED' && (
+                  <button
+                    onClick={() => setCreateIssueModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111110] text-white rounded text-xs font-mono hover:bg-[#2A2A28] transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ LOG ISSUE / BLOCKER</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-white border border-[#E5E5E0] rounded-lg">
+                <span className="text-[10px] font-mono uppercase text-[#777770]">TOTAL LOGGED ISSUES</span>
+                <p className="text-2xl font-bold font-mono text-[#111110] mt-1">{issues.length}</p>
+              </div>
+              <div className={`p-4 bg-white border rounded-lg ${openIssues.length > 0 ? 'border-rose-300 bg-rose-50/40' : 'border-[#E5E5E0]'}`}>
+                <span className="text-[10px] font-mono uppercase text-[#777770]">OPEN BLOCKERS</span>
+                <p className={`text-2xl font-bold font-mono mt-1 ${openIssues.length > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                  {openIssues.length}
+                </p>
+              </div>
+              <div className="p-4 bg-white border border-[#E5E5E0] rounded-lg">
+                <span className="text-[10px] font-mono uppercase text-[#777770]">CLIENT DEPENDENCY</span>
+                <p className="text-2xl font-bold font-mono text-amber-600 mt-1">
+                  {issues.filter((i) => i.blocked_by_client && i.status !== 'RESOLVED').length}
+                </p>
+              </div>
+            </div>
+
+            {/* Issues List */}
+            {issues.length === 0 ? (
+              <div className="bg-white border border-[#E5E5E0] rounded-lg p-10 text-center space-y-3">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                <h4 className="font-bold text-sm text-[#111110]">No Issues or Blockers Recorded</h4>
+                <p className="text-xs font-mono text-[#777770] max-w-md mx-auto">
+                  There are currently no active bottlenecks, documentation defects, or pending client dependencies on this engagement.
+                </p>
+                {isAuditorOrAdmin && engagement.status !== 'CLOSED' && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setCreateIssueModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111110] text-white rounded text-xs font-mono hover:bg-[#2A2A28]"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Log First Issue</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white border border-[#E5E5E0] rounded-lg overflow-hidden divide-y divide-[#F0F0EC]">
+                {issues.map((issue) => {
+                  const isResolved = issue.status === 'RESOLVED' || issue.status === 'CLOSED';
+                  return (
+                    <div key={issue.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#FAFAF8] transition-colors">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                            isResolved
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
+                            {issue.status}
+                          </span>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                            issue.priority === 'URGENT' || issue.priority === 'HIGH'
+                              ? 'bg-amber-100 text-amber-900 font-bold'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {issue.priority}
+                          </span>
+                          {issue.blocked_by_client && (
+                            <span className="text-[10px] font-mono bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded border border-amber-200 font-bold">
+                              CLIENT DEPENDENCY
+                            </span>
+                          )}
+                          <h4 className={`text-sm font-semibold ${isResolved ? 'line-through text-[#777770]' : 'text-[#111110]'}`}>
+                            {issue.title}
+                          </h4>
+                        </div>
+                        {issue.description && (
+                          <p className="text-xs text-[#555550] pl-1">{issue.description}</p>
+                        )}
+                        <div className="text-[11px] font-mono text-[#777770] flex items-center gap-3 pt-1">
+                          <span>Logged by: {issue.owner_name || 'Auditor'}</span>
+                          {issue.due_date && <span>Target: {issue.due_date}</span>}
+                          {issue.resolved_at && (
+                            <span className="text-emerald-700 font-medium">
+                              Resolved: {new Date(issue.resolved_at).toLocaleDateString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isAuditorOrAdmin && engagement.status !== 'CLOSED' && (
+                        <div className="shrink-0 flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleIssue(issue.id, issue.status)}
+                            className={`px-3 py-1.5 rounded text-xs font-mono font-bold border transition-colors ${
+                              isResolved
+                                ? 'border-[#E5E5E0] bg-white text-[#555550] hover:bg-[#F0F0EC]'
+                                : 'border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {isResolved ? 'REOPEN ISSUE' : '✓ MARK RESOLVED'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1671,6 +1844,28 @@ export default function EngagementAuditRoomPage() {
           </div>
         </div>
       )}
+
+      {/* Create Issue Modal */}
+      <CreateIssueModal
+        isOpen={createIssueModalOpen}
+        onClose={() => setCreateIssueModalOpen(false)}
+        engagementId={engagement.id}
+        onIssueCreated={async () => {
+          showToast('Issue / Blocker recorded successfully');
+          await fetchEngagementData();
+        }}
+      />
+
+      {/* Multi-Channel Request Document Modal */}
+      <RequestDocumentModal
+        isOpen={requestMultiChannelModalOpen}
+        onClose={() => setRequestMultiChannelModalOpen(false)}
+        engagementId={engagement.id}
+        onRequestCreated={async () => {
+          showToast('Document request dispatched successfully');
+          await fetchEngagementData();
+        }}
+      />
     </AppShell>
   );
 }

@@ -50,9 +50,16 @@ function initSchema(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS clients (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      email TEXT NOT NULL,
+      email TEXT,
       company_name TEXT NOT NULL,
       financial_year TEXT NOT NULL DEFAULT '2024-25',
+      gstin TEXT,
+      pan TEXT,
+      phone TEXT,
+      address TEXT,
+      industry TEXT,
+      assigned_auditor TEXT,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -61,8 +68,12 @@ function initSchema(db: Database.Database) {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('CLIENT', 'AUDITOR', 'ADMIN')),
+      role TEXT NOT NULL CHECK (role IN ('CLIENT', 'AUDITOR', 'ADMIN', 'PARTNER')),
       client_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+      organization TEXT,
+      phone TEXT,
+      firebase_uid TEXT,
+      password_hash TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -232,6 +243,55 @@ function initSchema(db: Database.Database) {
       UNIQUE(engagement_id, role_gate)
     );
 
+    -- Issues / Blockers per engagement
+    CREATE TABLE IF NOT EXISTS engagement_issues (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      owner_name TEXT,
+      priority TEXT NOT NULL DEFAULT 'MEDIUM',
+      status TEXT NOT NULL DEFAULT 'OPEN',
+      blocked_by_client INTEGER DEFAULT 0,
+      due_date TEXT,
+      resolved_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- Billing / Payment Records
+    CREATE TABLE IF NOT EXISTS billing_records (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      invoice_number TEXT,
+      fee REAL NOT NULL DEFAULT 0,
+      gst REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      payment_method TEXT,
+      payment_reference TEXT,
+      recorded_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      recorded_by_name TEXT,
+      recorded_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- Auditor document requests (multi-channel)
+    CREATE TABLE IF NOT EXISTS document_requests (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT REFERENCES engagements(id) ON DELETE CASCADE,
+      document_type TEXT NOT NULL,
+      description TEXT,
+      requested_by_id TEXT NOT NULL REFERENCES users(id),
+      requested_by_name TEXT,
+      requested_from_id TEXT REFERENCES users(id),
+      channels TEXT NOT NULL DEFAULT '["TRACERA"]',
+      status TEXT NOT NULL DEFAULT 'REQUESTED',
+      due_date TEXT,
+      fulfilled_document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_docs_client ON documents(client_id);
     CREATE INDEX IF NOT EXISTS idx_docs_status ON documents(status);
@@ -244,6 +304,9 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_eng_checklist ON engagement_checklists(engagement_id);
     CREATE INDEX IF NOT EXISTS idx_eng_tasks ON engagement_tasks(engagement_id, status);
     CREATE INDEX IF NOT EXISTS idx_eng_approvals ON engagement_approvals(engagement_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_eng ON engagement_issues(engagement_id, status);
+    CREATE INDEX IF NOT EXISTS idx_billing_eng ON billing_records(engagement_id);
+    CREATE INDEX IF NOT EXISTS idx_doc_requests ON document_requests(engagement_id);
   `);
 
   // Safe migrations for columns
@@ -289,383 +352,79 @@ function initSchema(db: Database.Database) {
     console.warn('DB column check notice:', err);
   }
 
-  seedData(db);
-  seedEngagements(db);
+  // Safe column additions
+  safeAddColumns(db);
+  seedSystemUsers(db);
 }
 
-function seedData(db: Database.Database) {
-  const clientCount = db.prepare('SELECT COUNT(*) as count FROM clients').get() as { count: number };
-  if (clientCount.count > 0) {
-    return;
+function safeAddColumns(db: Database.Database) {
+  const ensureCol = (table: string, col: string, def: string) => {
+    try {
+      const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+      if (!cols.includes(col)) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+      }
+    } catch {}
+  };
+
+  ensureCol('clients', 'gstin', 'TEXT');
+  ensureCol('clients', 'pan', 'TEXT');
+  ensureCol('clients', 'phone', 'TEXT');
+  ensureCol('clients', 'address', 'TEXT');
+  ensureCol('clients', 'industry', 'TEXT');
+  ensureCol('clients', 'assigned_auditor', 'TEXT');
+  ensureCol('clients', 'status', "TEXT NOT NULL DEFAULT 'ACTIVE'");
+
+  ensureCol('users', 'organization', 'TEXT');
+  ensureCol('users', 'phone', 'TEXT');
+  ensureCol('users', 'firebase_uid', 'TEXT');
+  ensureCol('users', 'password_hash', 'TEXT');
+
+  ensureCol('documents', 'engagement_id', 'TEXT');
+  ensureCol('documents', 'source_channel', "TEXT DEFAULT 'PORTAL'");
+  ensureCol('documents', 'description', 'TEXT');
+
+  ensureCol('audit_logs', 'document_id', 'TEXT');
+  ensureCol('audit_logs', 'engagement_id', 'TEXT');
+  ensureCol('audit_logs', 'actor_name', 'TEXT');
+  ensureCol('audit_logs', 'actor_role', 'TEXT');
+
+  ensureCol('notifications', 'engagement_id', 'TEXT');
+  ensureCol('notifications', 'link_url', 'TEXT');
+}
+
+/**
+ * Seeds ONLY the 4 demo auth accounts (no business data).
+ * Business data (clients, engagements, documents) is created exclusively
+ * through the UI. Runs only when the users table is empty.
+ */
+function seedSystemUsers(db: Database.Database) {
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+  if (userCount.count > 0) {
+    return; // Already seeded or user has created accounts
   }
 
   const now = new Date().toISOString();
-  const earlier1 = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-  const earlier2 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const earlier3 = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
-
-  // 1. Seed Clients
-  const insertClient = db.prepare(`
-    INSERT INTO clients (id, name, email, company_name, financial_year, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const client1Id = 'c1111111-1111-1111-1111-111111111111';
-  const client2Id = 'c2222222-2222-2222-2222-222222222222';
-
-  insertClient.run(client1Id, 'ABC Traders', 'contact@abctraders.com', 'ABC Traders Private Limited', '2024-25', earlier1, now);
-  insertClient.run(client2Id, 'XYZ Enterprises', 'finance@xyzent.com', 'XYZ Enterprises LLP', '2024-25', earlier1, now);
-
-  // 2. Seed Users
   const insertUser = db.prepare(`
-    INSERT INTO users (id, name, email, role, client_id, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  const uClientId = 'u1111111-1111-1111-1111-111111111111';
-  const uAuditorId = 'u2222222-2222-2222-2222-222222222222';
-  const uAdminId = 'u3333333-3333-3333-3333-333333333333';
-
-  insertUser.run(uClientId, 'ABC Traders (Client)', 'client@demo.com', 'CLIENT', client1Id, earlier1);
-  insertUser.run(uAuditorId, 'Rahul Sharma', 'auditor@demo.com', 'AUDITOR', null, earlier1);
-  insertUser.run(uAdminId, 'Managing Partner (Admin)', 'admin@demo.com', 'ADMIN', null, earlier1);
-
-  // 3. Seed Documents for ABC Traders & XYZ Enterprises
-  const insertDoc = db.prepare(`
-    INSERT INTO documents (id, client_id, title, document_type, status, current_version, assigned_to, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertVersion = db.prepare(`
-    INSERT INTO document_versions (id, document_id, version_number, file_name, file_path, file_size, file_type, uploaded_by, uploaded_at, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertReview = db.prepare(`
-    INSERT INTO reviews (id, document_id, version_id, reviewer_id, status, comment, created_at)
+    INSERT INTO users (id, name, email, role, client_id, organization, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertAudit = db.prepare(`
-    INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  // ABC Traders Doc 1: Bank Statement (APPROVED)
-  const doc1Id = 'd1111111-1111-1111-1111-111111111111';
-  const v1_1Id = 'v1111111-1111-1111-1111-111111111111';
-  insertDoc.run(doc1Id, client1Id, 'Bank Statement - Q1 HDFC', 'BANK_STATEMENT', 'APPROVED', 1, uAuditorId, earlier2, earlier1);
-  insertVersion.run(v1_1Id, doc1Id, 1, 'bank_statement_q1.pdf', '/sample-files/bank_statement_demo.txt', 124500, 'application/pdf', uClientId, earlier2, 'Original HDFC Q1 statement');
-  insertReview.run('r1111111-1111-1111-1111-111111111111', doc1Id, v1_1Id, uAuditorId, 'APPROVED', 'Reconciled opening balance and bank ledger. All checks cleared.', earlier1);
-  insertAudit.run('a1111111-1111-1111-1111-111111111111', doc1Id, uClientId, 'DOCUMENT_UPLOADED', JSON.stringify({ version: 1, file_name: 'bank_statement_q1.pdf' }), earlier2);
-  insertAudit.run('a1111111-1111-1111-1111-111111111112', doc1Id, uAuditorId, 'DOCUMENT_ASSIGNED', JSON.stringify({ assigned_to_name: 'Rahul Sharma' }), earlier2);
-  insertAudit.run('a1111111-1111-1111-1111-111111111113', doc1Id, uAuditorId, 'REVIEW_STARTED', JSON.stringify({ reviewer_name: 'Rahul Sharma' }), earlier1);
-  insertAudit.run('a1111111-1111-1111-1111-111111111114', doc1Id, uAuditorId, 'DOCUMENT_APPROVED', JSON.stringify({ version: 1, comment: 'Reconciled opening balance and bank ledger. All checks cleared.' }), earlier1);
-
-  // ABC Traders Doc 2: Purchase Register (CORRECTION_REQUIRED)
-  const doc2Id = 'd2222222-2222-2222-2222-222222222222';
-  const v2_1Id = 'v2222222-2222-2222-2222-222222222221';
-  insertDoc.run(doc2Id, client1Id, 'Purchase Register - April 2024', 'PURCHASE_REGISTER', 'CORRECTION_REQUIRED', 1, uAuditorId, earlier2, earlier3);
-  insertVersion.run(v2_1Id, doc2Id, 1, 'purchase_register_apr.xlsx', '/sample-files/purchase_register_demo.csv', 48900, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', uClientId, earlier2, 'Initial monthly purchase dump');
-  insertReview.run('r2222222-2222-2222-2222-222222222221', doc2Id, v2_1Id, uAuditorId, 'CORRECTION_REQUIRED', 'Invoice INV-204 is missing from the purchase register. Please reconcile with GSTR-2B and re-upload.', earlier3);
-  insertAudit.run('a2222222-2222-2222-2222-222222222221', doc2Id, uClientId, 'DOCUMENT_UPLOADED', JSON.stringify({ version: 1, file_name: 'purchase_register_apr.xlsx' }), earlier2);
-  insertAudit.run('a2222222-2222-2222-2222-222222222222', doc2Id, uAuditorId, 'DOCUMENT_ASSIGNED', JSON.stringify({ assigned_to_name: 'Rahul Sharma' }), earlier2);
-  insertAudit.run('a2222222-2222-2222-2222-222222222223', doc2Id, uAuditorId, 'REVIEW_STARTED', JSON.stringify({ reviewer_name: 'Rahul Sharma' }), earlier3);
-  insertAudit.run('a2222222-2222-2222-2222-222222222224', doc2Id, uAuditorId, 'CORRECTION_REQUESTED', JSON.stringify({ version: 1, reason: 'Invoice INV-204 is missing from the purchase register. Please reconcile with GSTR-2B and re-upload.', priority: 'HIGH' }), earlier3);
-
-  // ABC Traders Doc 3: GST Invoice (SUBMITTED)
-  const doc3Id = 'd3333333-3333-3333-3333-333333333333';
-  const v3_1Id = 'v3333333-3333-3333-3333-333333333331';
-  insertDoc.run(doc3Id, client1Id, 'GST Invoice - Batch 04', 'GST_DOCUMENT', 'SUBMITTED', 1, uAuditorId, earlier3, earlier3);
-  insertVersion.run(v3_1Id, doc3Id, 1, 'gst_invoice_batch_04.pdf', '/sample-files/bank_statement_demo.txt', 230000, 'application/pdf', uClientId, earlier3, 'Quarterly GST supporting invoices');
-  insertAudit.run('a3333333-3333-3333-3333-333333333331', doc3Id, uClientId, 'DOCUMENT_UPLOADED', JSON.stringify({ version: 1, file_name: 'gst_invoice_batch_04.pdf' }), earlier3);
-  insertAudit.run('a3333333-3333-3333-3333-333333333332', doc3Id, uAuditorId, 'DOCUMENT_ASSIGNED', JSON.stringify({ assigned_to_name: 'Rahul Sharma' }), earlier3);
-
-  // XYZ Enterprises Doc 4: Purchase Register (SUBMITTED)
-  const doc4Id = 'd4444444-4444-4444-4444-444444444444';
-  const v4_1Id = 'v4444444-4444-4444-4444-444444444441';
-  insertDoc.run(doc4Id, client2Id, 'Purchase Register - Q1 Consolidated', 'PURCHASE_REGISTER', 'SUBMITTED', 1, uAuditorId, earlier3, earlier3);
-  insertVersion.run(v4_1Id, doc4Id, 1, 'xyz_purchases_q1.xlsx', '/sample-files/purchase_register_demo.csv', 89000, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', uClientId, earlier3, 'Q1 summary');
-  insertAudit.run('a4444444-4444-4444-4444-444444444441', doc4Id, uClientId, 'DOCUMENT_UPLOADED', JSON.stringify({ version: 1, file_name: 'xyz_purchases_q1.xlsx' }), earlier3);
-  insertAudit.run('a4444444-4444-4444-4444-444444444442', doc4Id, uAuditorId, 'DOCUMENT_ASSIGNED', JSON.stringify({ assigned_to_name: 'Rahul Sharma' }), earlier3);
-
-  // XYZ Enterprises Doc 5: GST Invoice (APPROVED)
-  const doc5Id = 'd5555555-5555-5555-5555-555555555555';
-  const v5_1Id = 'v5555555-5555-5555-5555-555555555551';
-  insertDoc.run(doc5Id, client2Id, 'GST Invoice - Machinery Import', 'INVOICE', 'APPROVED', 1, uAuditorId, earlier1, now);
-  insertVersion.run(v5_1Id, doc5Id, 1, 'customs_machinery_inv.pdf', '/sample-files/bank_statement_demo.txt', 540000, 'application/pdf', uClientId, earlier1, 'Capital goods IGST credit claim');
-  insertReview.run('r5555555-5555-5555-5555-555555555551', doc5Id, v5_1Id, uAuditorId, 'APPROVED', 'Bill of entry and custom duty receipt verified against ICEGATE.', now);
-  insertAudit.run('a5555555-5555-5555-5555-555555555551', doc5Id, uClientId, 'DOCUMENT_UPLOADED', JSON.stringify({ version: 1, file_name: 'customs_machinery_inv.pdf' }), earlier1);
-  insertAudit.run('a5555555-5555-5555-5555-555555555552', doc5Id, uAuditorId, 'REVIEW_STARTED', JSON.stringify({ reviewer_name: 'Rahul Sharma' }), now);
-  insertAudit.run('a5555555-5555-5555-5555-555555555553', doc5Id, uAuditorId, 'DOCUMENT_APPROVED', JSON.stringify({ version: 1, comment: 'Bill of entry and custom duty receipt verified against ICEGATE.' }), now);
+  // These are SYSTEM accounts only — zero business data attached
+  insertUser.run('sys-client-001', 'Client Portal', 'client@demo.com', 'CLIENT', null, 'Demo Organization', now);
+  insertUser.run('sys-auditor-001', 'Auditor', 'auditor@demo.com', 'AUDITOR', null, 'TRACERA Firm', now);
+  insertUser.run('sys-partner-001', 'Partner', 'partner@demo.com', 'PARTNER', null, 'TRACERA Firm', now);
+  insertUser.run('sys-admin-001', 'Admin', 'admin@demo.com', 'ADMIN', null, 'TRACERA Firm', now);
 }
 
-function seedEngagements(db: Database.Database) {
-  const engCount = db.prepare('SELECT COUNT(*) as count FROM engagements').get() as { count: number };
-  if (engCount.count > 0) {
-    return;
-  }
+// Kept as named stub so old references compile — business logic now deleted
+function seedData(_db: Database.Database) { /* removed — no fake business data */ }
+function seedEngagements(_db: Database.Database) { /* removed — no fake business data */ }
 
-  const now = new Date().toISOString();
-  const earlier1 = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-  const earlier2 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-
-  const client1Id = 'c1111111-1111-1111-1111-111111111111'; // ABC Traders
-  const client2Id = 'c2222222-2222-2222-2222-222222222222'; // XYZ Enterprises
-  const uAuditorId = 'u2222222-2222-2222-2222-222222222222'; // Rahul Sharma
-  const uAdminId = 'u3333333-3333-3333-3333-333333333333'; // Managing Partner
-
-  const eng1Id = 'eng-statutory-abc-2025';
-
-  // 1. ABC Traders Statutory Audit
-  db.prepare(`
-    INSERT INTO engagements (
-      id, client_id, title, service_type, financial_year, status,
-      current_stage_index, total_stages, progress_percent, due_date,
-      assigned_partner_id, assigned_partner_name,
-      assigned_manager_id, assigned_manager_name,
-      assigned_staff_id, assigned_staff_name,
-      billing_amount, billing_gst, billing_total, billing_status,
-      created_at, updated_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?,
-      ?, ?,
-      ?, ?,
-      ?, ?, ?, ?,
-      ?, ?
-    )
-  `).run(
-    eng1Id,
-    client1Id,
-    'ABC Traders Pvt Ltd · FY 2025–26 Statutory Audit',
-    'STATUTORY_AUDIT',
-    '2025-26',
-    'DOCUMENT_COLLECTION',
-    2, // 0-indexed stage 3: Document Collection
-    10,
-    35,
-    '2026-09-30',
-    uAdminId,
-    'Managing Partner (Admin)',
-    uAuditorId,
-    'Rahul Sharma',
-    uAuditorId,
-    'Rahul Sharma',
-    25000,
-    4500,
-    29500,
-    'INVOICED',
-    earlier2,
-    now
-  );
-
-  // 10 Stages for Statutory Audit
-  const stages = [
-    { num: 1, name: '01 Engagement Acceptance', status: 'COMPLETED', completed_at: earlier2 },
-    { num: 2, name: '02 Planning & Risk Assessment', status: 'COMPLETED', completed_at: earlier1 },
-    { num: 3, name: '03 Document Collection', status: 'IN_PROGRESS', completed_at: null },
-    { num: 4, name: '04 Preliminary Review', status: 'PENDING', completed_at: null },
-    { num: 5, name: '05 Fieldwork & Substantive Testing', status: 'PENDING', completed_at: null },
-    { num: 6, name: '06 Manager Review', status: 'PENDING', completed_at: null },
-    { num: 7, name: '07 Partner Review', status: 'PENDING', completed_at: null },
-    { num: 8, name: '08 Client Confirmation', status: 'PENDING', completed_at: null },
-    { num: 9, name: '09 Finalisation & Reporting', status: 'PENDING', completed_at: null },
-    { num: 10, name: '10 Engagement Closure', status: 'PENDING', completed_at: null },
-  ];
-
-  const insertStage = db.prepare(`
-    INSERT INTO engagement_stages (id, engagement_id, stage_number, name, status, owner_id, owner_name, due_date, completed_at, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  stages.forEach((st) => {
-    insertStage.run(
-      `stg-${eng1Id}-${st.num}`,
-      eng1Id,
-      st.num,
-      st.name,
-      st.status,
-      uAuditorId,
-      'Rahul Sharma',
-      '2026-09-30',
-      st.completed_at,
-      st.num === 3 ? 'Awaiting outstanding debtor ageing and sales registers from client.' : null
-    );
-  });
-
-  // 12 Checklist Items for Statutory Audit
-  const checklist = [
-    { title: 'Trial Balance', cat: 'Financials', status: 'APPROVED', docId: 'd1111111-1111-1111-1111-111111111111' },
-    { title: 'General Ledger', cat: 'Books of Accounts', status: 'SUBMITTED', docId: 'd3333333-3333-3333-3333-333333333333' },
-    { title: 'Bank Statements (All 4 Quarters)', cat: 'Banking', status: 'APPROVED', docId: 'd1111111-1111-1111-1111-111111111111' },
-    { title: 'Purchase Register with GSTR-2B Recon', cat: 'Purchases & GST', status: 'SUBMITTED', docId: 'd2222222-2222-2222-2222-222222222222' },
-    { title: 'Sales Register with GSTR-1 Recon', cat: 'Sales & GST', status: 'REQUIRED', docId: null },
-    { title: 'GST Returns (GSTR-3B & GSTR-1 Files)', cat: 'Statutory', status: 'APPROVED', docId: null },
-    { title: 'TDS Returns & Form 26AS / AIS', cat: 'Taxation', status: 'REQUESTED', docId: null, msg: 'Please provide Q4 TDS return acknowledgment and Form 26AS download.' },
-    { title: 'Fixed Asset Register & Depreciation Schedule', cat: 'Fixed Assets', status: 'REQUIRED', docId: null },
-    { title: 'Debtor Ageing & Balance Confirmations', cat: 'Receivables', status: 'REQUIRED', docId: null },
-    { title: 'Creditor Ageing & MSME Classification', cat: 'Payables', status: 'REQUIRED', docId: null },
-    { title: 'Previous Year Signed Financial Statements', cat: 'Prior Year', status: 'APPROVED', docId: null },
-    { title: 'Director Signing Declarations & MGT-7', cat: 'Corporate Compliance', status: 'REQUIRED', docId: null },
-  ];
-
-  const insertChecklist = db.prepare(`
-    INSERT INTO engagement_checklists (id, engagement_id, title, category, is_mandatory, status, document_id, request_message, requested_at, due_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  checklist.forEach((item, idx) => {
-    insertChecklist.run(
-      `chk-${eng1Id}-${idx + 1}`,
-      eng1Id,
-      item.title,
-      item.cat,
-      1,
-      item.status,
-      item.docId,
-      item.msg || null,
-      item.status === 'REQUESTED' ? earlier1 : null,
-      '2026-09-25'
-    );
-  });
-
-  // 5 Tasks for Statutory Audit
-  const tasks = [
-    { title: 'Verify Bank Reconciliation Statement (BRS)', status: 'COMPLETED', prio: 'HIGH', blockedBy: null, reason: null, completedAt: earlier1 },
-    { title: 'Reconcile Purchase Register with GSTR-2B', status: 'BLOCKED', prio: 'URGENT', blockedBy: 'Client - Missing June Bank Statement & Supplier Invoices', reason: 'ITC mismatch of ₹42,800 between books and GSTR-2B portal dump.', completedAt: null },
-    { title: 'Fixed Asset physical verification sample selection', status: 'IN_PROGRESS', prio: 'MEDIUM', blockedBy: null, reason: null, completedAt: null },
-    { title: 'TDS Challan & 26AS matching', status: 'TODO', prio: 'MEDIUM', blockedBy: null, reason: null, completedAt: null },
-    { title: 'Statutory Audit Checklist Sign-off', status: 'TODO', prio: 'HIGH', blockedBy: null, reason: null, completedAt: null },
-  ];
-
-  const insertTask = db.prepare(`
-    INSERT INTO engagement_tasks (id, engagement_id, title, stage_number, assigned_to, assigned_to_name, status, priority, due_date, blocker_reason, blocked_by, completed_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  tasks.forEach((t, idx) => {
-    insertTask.run(
-      `tsk-${eng1Id}-${idx + 1}`,
-      eng1Id,
-      t.title,
-      3,
-      uAuditorId,
-      'Rahul Sharma',
-      t.status,
-      t.prio,
-      '2026-09-28',
-      t.reason,
-      t.blockedBy,
-      t.completedAt,
-      earlier2
-    );
-  });
-
-  // 3 Multi-tier Maker-Checker Approvals
-  const approvals = [
-    { role: 'PERFORMER', name: 'Rahul Sharma', status: 'APPROVED', remarks: 'Preliminary testing & audit procedures for available documents complete.', approvedAt: earlier1 },
-    { role: 'REVIEWER', name: 'Rahul Sharma', status: 'PENDING', remarks: 'Awaiting June purchase recon and client balance confirmations.', approvedAt: null },
-    { role: 'PARTNER', name: 'Managing Partner (Admin)', status: 'PENDING', remarks: null, approvedAt: null },
-  ];
-
-  const insertApproval = db.prepare(`
-    INSERT INTO engagement_approvals (id, engagement_id, role_gate, approver_id, approver_name, status, remarks, approved_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  approvals.forEach((a) => {
-    insertApproval.run(
-      `app-${eng1Id}-${a.role}`,
-      eng1Id,
-      a.role,
-      a.role === 'PARTNER' ? uAdminId : uAuditorId,
-      a.name,
-      a.status,
-      a.remarks,
-      a.approvedAt
-    );
-  });
-
-  // Link existing ABC documents to engagement
-  try {
-    db.prepare(`UPDATE documents SET engagement_id = ? WHERE id IN ('d1111111-1111-1111-1111-111111111111', 'd2222222-2222-2222-2222-222222222222', 'd3333333-3333-3333-3333-333333333333')`).run(eng1Id);
-  } catch {}
-
-  // Engagement audit log
-  db.prepare(`
-    INSERT INTO audit_logs (id, engagement_id, actor_id, action, metadata, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    `a-eng-${eng1Id}-1`,
-    eng1Id,
-    uAdminId,
-    'ENGAGEMENT_CREATED',
-    JSON.stringify({ title: 'ABC Traders Pvt Ltd · FY 2025–26 Statutory Audit', service_type: 'STATUTORY_AUDIT', financial_year: '2025-26' }),
-    earlier2
-  );
-  db.prepare(`
-    INSERT INTO audit_logs (id, engagement_id, actor_id, action, metadata, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    `a-eng-${eng1Id}-2`,
-    eng1Id,
-    uAuditorId,
-    'STAGE_ADVANCED',
-    JSON.stringify({ from_stage: '02 Planning & Risk Assessment', to_stage: '03 Document Collection', stage_number: 3 }),
-    earlier1
-  );
-
-  // 2. XYZ Enterprises Tax Audit
-  const eng2Id = 'eng-tax-xyz-2025';
-  db.prepare(`
-    INSERT INTO engagements (
-      id, client_id, title, service_type, financial_year, status,
-      current_stage_index, total_stages, progress_percent, due_date,
-      assigned_partner_id, assigned_partner_name,
-      assigned_manager_id, assigned_manager_name,
-      assigned_staff_id, assigned_staff_name,
-      billing_amount, billing_gst, billing_total, billing_status,
-      created_at, updated_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?,
-      ?, ?,
-      ?, ?,
-      ?, ?, ?, ?,
-      ?, ?
-    )
-  `).run(
-    eng2Id,
-    client2Id,
-    'XYZ Enterprises LLP · FY 2025–26 Tax Audit (Sec 44AB)',
-    'TAX_AUDIT',
-    '2025-26',
-    'PLANNING',
-    1,
-    8,
-    20,
-    '2026-10-15',
-    uAdminId,
-    'Managing Partner (Admin)',
-    uAuditorId,
-    'Rahul Sharma',
-    uAuditorId,
-    'Rahul Sharma',
-    35000,
-    6300,
-    41300,
-    'PENDING',
-    earlier1,
-    now
-  );
-
-  // Link XYZ docs
-  try {
-    db.prepare(`UPDATE documents SET engagement_id = ? WHERE id IN ('d4444444-4444-4444-4444-444444444444', 'd5555555-5555-5555-5555-555555555555')`).run(eng2Id);
-  } catch {}
+// Placeholder to avoid breaking the old call-site if it exists anywhere
+function _unusedSeedRef() {
+  // Previously contained ABC Traders, XYZ Enterprises, fake documents, etc.
+  // All removed per TRACERA functional overhaul — 18 Sep 2026
 }
 
 // ================= Repository Access Methods =================
@@ -691,6 +450,29 @@ export function getClientById(id: string): Client | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM clients WHERE id = ?').get(id) as Client | undefined;
   return row || null;
+}
+
+export function createClient(data: Partial<Client> & { name: string; company_name: string; financial_year: string }): Client {
+  const db = getDb();
+  const id = data.id || crypto.randomUUID();
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO clients (id, name, email, company_name, gstin, pan, financial_year, phone, address, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    data.name.trim(),
+    data.email?.trim() || null,
+    data.company_name.trim(),
+    data.gstin?.trim() || null,
+    data.pan?.trim() || null,
+    data.financial_year,
+    data.phone?.trim() || null,
+    data.address?.trim() || null,
+    now,
+    now
+  );
+  return getClientById(id)!;
 }
 
 export function getDocuments(filters?: {
@@ -1238,6 +1020,16 @@ export function getEngagementById(id: string): Engagement | null {
     approvals,
     documents,
     audit_logs: auditLogs,
+    issues: (db.prepare('SELECT * FROM engagement_issues WHERE engagement_id = ? ORDER BY created_at DESC').all(id) as any[]).map((i) => ({
+      ...i,
+      blocked_by_client: Boolean(i.blocked_by_client),
+    })),
+    billing_records: db.prepare('SELECT * FROM billing_records WHERE engagement_id = ? ORDER BY created_at DESC').all(id) as any[],
+    document_requests: (db.prepare('SELECT * FROM document_requests WHERE engagement_id = ? ORDER BY created_at DESC').all(id) as any[]).map((r) => {
+      let channels = ['TRACERA'];
+      try { channels = JSON.parse(r.channels); } catch {}
+      return { ...r, channels };
+    }),
   };
 }
 
@@ -1612,6 +1404,8 @@ export function insertAuditLog(log: {
   );
 }
 
+export const createAuditLog = insertAuditLog;
+
 export function resetDatabase() {
   const db = getDb();
   db.exec(`
@@ -1619,6 +1413,9 @@ export function resetDatabase() {
     DELETE FROM engagement_tasks;
     DELETE FROM engagement_checklists;
     DELETE FROM engagement_stages;
+    DELETE FROM engagement_issues;
+    DELETE FROM billing_records;
+    DELETE FROM document_requests;
     DELETE FROM engagements;
     DELETE FROM audit_logs;
     DELETE FROM reviews;
@@ -1629,8 +1426,7 @@ export function resetDatabase() {
     DELETE FROM users;
     DELETE FROM clients;
   `);
-  seedData(db);
-  seedEngagements(db);
+  seedSystemUsers(db);
 }
 
 export function clearDocumentsOnly() {
@@ -1640,6 +1436,9 @@ export function clearDocumentsOnly() {
     DELETE FROM engagement_tasks;
     DELETE FROM engagement_checklists;
     DELETE FROM engagement_stages;
+    DELETE FROM engagement_issues;
+    DELETE FROM billing_records;
+    DELETE FROM document_requests;
     DELETE FROM engagements;
     DELETE FROM audit_logs;
     DELETE FROM reviews;
@@ -1648,5 +1447,31 @@ export function clearDocumentsOnly() {
     DELETE FROM notifications;
     DELETE FROM extracted_document_data;
   `);
-  seedEngagements(db);
+  // After document-only reset, keep users intact (no reseed needed)
 }
+
+export function getEngagementIssues(engagementId: string) {
+  const db = getDb();
+  return (db.prepare('SELECT * FROM engagement_issues WHERE engagement_id = ? ORDER BY created_at DESC').all(engagementId) as any[]).map(i => ({
+    ...i,
+    blocked_by_client: Boolean(i.blocked_by_client),
+  }));
+}
+
+export function getBillingRecords(engagementId: string) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM billing_records WHERE engagement_id = ? ORDER BY created_at DESC').all(engagementId) as any[];
+}
+
+export function getDocumentRequests(engagementId?: string) {
+  const db = getDb();
+  const rows = engagementId
+    ? db.prepare('SELECT * FROM document_requests WHERE engagement_id = ? ORDER BY created_at DESC').all(engagementId)
+    : db.prepare('SELECT * FROM document_requests ORDER BY created_at DESC').all();
+  return (rows as any[]).map(r => {
+    let channels = ['TRACERA'];
+    try { channels = JSON.parse(r.channels); } catch {}
+    return { ...r, channels };
+  });
+}
+

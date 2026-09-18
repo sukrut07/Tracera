@@ -31,32 +31,21 @@ export default function AuditorHistoryPage() {
   }, []);
 
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: '2',
-          name: 'Rahul Sharma',
-          email: 'auditor@demo.com',
-          role: 'AUDITOR',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser || undefined}>
       <div className="space-y-6">
-        <div className="border-b border-[#E5E5E0] pb-6">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold block mb-1">
-            STATUTORY GOVERNANCE
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111110]">
-            Firm Audit History & Logs
+        <div className="border-b-2 border-[#0A0A0A] pb-6">
+          <p className="text-[10px] font-bold text-[#E73520] uppercase tracking-widest block mb-1">
+            Statutory governance
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">
+            Audit history &amp; logs
           </h1>
           <p className="text-xs text-[#666660]">
             Section 143(3) chronological audit logs across all clients and engagements.
           </p>
         </div>
 
-        <div className="border border-[#E5E5E0] bg-white p-6 font-mono text-xs">
+        <div className="border-2 border-[#0A0A0A] bg-white p-6 shadow-[4px_4px_0px_#0A0A0A]">
           <div className="space-y-6">
             {documents.map((doc) => (
               <div key={doc.id} className="border-b border-[#E5E5E0] pb-6 last:border-b-0 last:pb-0 space-y-3">

@@ -47,7 +47,7 @@ export const reportService = {
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(document.client?.company_name || document.client?.name || 'ABC Traders', 60, 56);
+    doc.text(document.client?.company_name || document.client?.name || 'Client Entity', 60, 56);
     doc.text(document.title, 60, 64);
     doc.text(document.document_type.replace(/_/g, ' '), 60, 72);
     doc.text(document.client?.financial_year || '2025-26', 60, 80);

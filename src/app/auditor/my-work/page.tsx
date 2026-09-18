@@ -4,19 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Shield,
-  CheckCircle2,
-  Clock,
   AlertTriangle,
   ArrowRight,
-  Filter,
-  Check,
-  RefreshCw,
   FolderOpen,
-  Calendar,
-  AlertCircle,
-  Sparkles,
-  Layers,
-  FileCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Engagement, EngagementTask, EngagementApproval, UserProfile, TaskStatus } from '@/types';
@@ -39,7 +30,6 @@ export default function AuditorMyWorkPage() {
       const res = await fetch('/api/engagements');
       const data = await res.json();
       if (res.ok) {
-        // Fetch detailed engagement info for the engagements
         const engs: Engagement[] = data.engagements || [];
         const detailedEngs = await Promise.all(
           engs.map(async (e) => {
@@ -66,34 +56,20 @@ export default function AuditorMyWorkPage() {
     fetchWorkData();
   }, [fetchWorkData]);
 
-  // Aggregate all tasks across engagements
   const allTasks: (EngagementTask & { engagementTitle: string; clientId: string })[] = [];
   const allApprovals: (EngagementApproval & { engagementTitle: string; engagementId: string })[] = [];
   const activeBlockers: (EngagementTask & { engagementTitle: string; engagementId: string })[] = [];
 
   engagements.forEach((eng) => {
     (eng.tasks || []).forEach((t) => {
-      allTasks.push({
-        ...t,
-        engagementTitle: eng.title,
-        clientId: eng.client_id,
-      });
+      allTasks.push({ ...t, engagementTitle: eng.title, clientId: eng.client_id });
       if (t.status === 'BLOCKED') {
-        activeBlockers.push({
-          ...t,
-          engagementTitle: eng.title,
-          engagementId: eng.id,
-        });
+        activeBlockers.push({ ...t, engagementTitle: eng.title, engagementId: eng.id });
       }
     });
-
     (eng.approvals || []).forEach((a) => {
       if (a.status === 'PENDING') {
-        allApprovals.push({
-          ...a,
-          engagementTitle: eng.title,
-          engagementId: eng.id,
-        });
+        allApprovals.push({ ...a, engagementTitle: eng.title, engagementId: eng.id });
       }
     });
   });
@@ -103,11 +79,7 @@ export default function AuditorMyWorkPage() {
       const res = await fetch(`/api/engagements/${engagementId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update',
-          taskId,
-          status: newStatus,
-        }),
+        body: JSON.stringify({ action: 'update', taskId, status: newStatus }),
       });
       if (res.ok) {
         showToast(`Task marked as ${newStatus}`);
@@ -118,10 +90,9 @@ export default function AuditorMyWorkPage() {
     }
   };
 
-  const filteredTasks = allTasks.filter((t) => {
-    if (filterPriority !== 'ALL' && t.priority !== filterPriority) return false;
-    return true;
-  });
+  const filteredTasks = allTasks.filter((t) =>
+    filterPriority === 'ALL' ? true : t.priority === filterPriority
+  );
 
   const urgentTasks = allTasks.filter((t) => t.priority === 'URGENT' || t.priority === 'HIGH');
   const pendingTasks = allTasks.filter((t) => t.status !== 'COMPLETED');
@@ -129,86 +100,95 @@ export default function AuditorMyWorkPage() {
   return (
     <AppShell>
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#111110] text-white px-5 py-3 rounded-lg shadow-xl font-mono text-xs border border-[#333330]">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0A0A0A] text-white px-5 py-3 shadow-[4px_4px_0px_#E73520] text-xs font-bold border-2 border-[#0A0A0A]">
           {toastMessage}
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-8 py-8 w-full space-y-6">
-        {/* Desk Header */}
-        <div className="border-b border-[#E5E5E0] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-wrap items-end justify-between gap-4 pb-6 border-b-2 border-[#0A0A0A]">
           <div>
-            <div className="font-mono text-xs text-[#777770] uppercase mb-1">AUDITOR WORK DESK</div>
-            <h1 className="text-2xl font-serif font-bold text-[#111110]">
-              Today&rsquo;s Audit Queue & Actions
+            <p className="text-[10px] font-bold text-[#E73520] uppercase tracking-widest mb-1">
+              Auditor work desk
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">
+              My work queue
             </h1>
-            <p className="text-xs font-mono text-[#777770] mt-1">
-              Fieldwork procedures assigned to you, pending maker-checker reviews, and active client blockers.
+            <p className="text-xs text-[#666660] mt-1">
+              Assigned fieldwork procedures, pending reviews, and active client blockers.
             </p>
           </div>
+          {currentUser && (
+            <span className="px-4 py-2 border-2 border-[#0A0A0A] text-xs font-bold text-[#0A0A0A] bg-white">
+              {currentUser.name}
+            </span>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <span className="px-3 py-1 bg-white border border-[#E5E5E0] rounded text-[#555550]">
-              Auditor: <strong>{currentUser?.name || 'Rahul Sharma, CA'}</strong>
+        {/* Workload Summary */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 border-2 border-[#0A0A0A] bg-white divide-y-2 lg:divide-y-0 lg:divide-x-2 divide-[#0A0A0A] shadow-[4px_4px_0px_#0A0A0A]">
+          <div className="p-5">
+            <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
+              Open procedures
+            </span>
+            <span className="text-3xl font-bold text-[#0A0A0A] block mt-1">
+              {loading ? '—' : pendingTasks.length}
+            </span>
+          </div>
+          <div className="p-5">
+            <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
+              High / Urgent
+            </span>
+            <span className="text-3xl font-bold text-[#E73520] block mt-1">
+              {loading ? '—' : urgentTasks.length}
+            </span>
+          </div>
+          <div className="p-5">
+            <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
+              Maker-checker reviews
+            </span>
+            <span className="text-3xl font-bold text-[#0A0A0A] block mt-1">
+              {loading ? '—' : allApprovals.length}
+            </span>
+          </div>
+          <div className="p-5">
+            <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
+              Client blockers
+            </span>
+            <span className="text-3xl font-bold text-[#E73520] block mt-1">
+              {loading ? '—' : activeBlockers.length}
             </span>
           </div>
         </div>
 
-        {/* Workload Summary Bar */}
-        <div className="bg-[#111110] text-white rounded-lg p-5 flex flex-wrap items-center justify-between gap-4 font-mono text-xs shadow-sm">
-          <div className="flex flex-wrap items-center gap-6">
-            <div>
-              <span className="text-[#888880] block text-[10px]">OPEN PROCEDURES</span>
-              <strong className="text-lg text-white">{pendingTasks.length}</strong>
-            </div>
-            <div className="h-8 w-px bg-[#333330]" />
-            <div>
-              <span className="text-[#888880] block text-[10px]">HIGH / URGENT</span>
-              <strong className="text-lg text-amber-400">{urgentTasks.length}</strong>
-            </div>
-            <div className="h-8 w-px bg-[#333330]" />
-            <div>
-              <span className="text-[#888880] block text-[10px]">MAKER-CHECKER REVIEWS</span>
-              <strong className="text-lg text-purple-400">{allApprovals.length}</strong>
-            </div>
-            <div className="h-8 w-px bg-[#333330]" />
-            <div>
-              <span className="text-[#888880] block text-[10px]">CLIENT BLOCKERS</span>
-              <strong className="text-lg text-rose-400">{activeBlockers.length}</strong>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-[#A1A19A]">
-            TODAY: {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-          </div>
-        </div>
-
-        {/* Section 1: Active Client Blockers */}
-        {activeBlockers.length > 0 && (
-          <div className="bg-rose-50 border border-rose-200 rounded-lg p-5 space-y-3">
-            <div className="flex items-center gap-2 text-rose-900 font-mono text-xs font-bold">
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
-              <span>ACTIVE CLIENT RECONCILIATION BLOCKERS ({activeBlockers.length})</span>
-            </div>
+        {/* Active Blockers */}
+        {!loading && activeBlockers.length > 0 && (
+          <div className="border-2 border-[#E73520] bg-[#FFF2F0] p-5 space-y-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#E73520] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Active client blockers ({activeBlockers.length})
+            </h2>
             <div className="space-y-2">
               {activeBlockers.map((b) => (
                 <div
                   key={b.id}
-                  className="bg-white border border-rose-200 rounded p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono"
+                  className="bg-white border-2 border-[#0A0A0A] p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"
                 >
                   <div>
-                    <div className="font-semibold text-rose-950">
-                      {b.title} &mdash; <span className="text-[#555550]">{b.engagementTitle}</span>
-                    </div>
-                    <div className="text-rose-800 text-[11px] mt-0.5">
-                      <strong>Blocked by:</strong> {b.blocked_by} &bull; &ldquo;{b.blocker_reason}&rdquo;
-                    </div>
+                    <p className="text-sm font-bold text-[#0A0A0A]">
+                      {b.title} — <span className="text-[#777770] font-normal">{b.engagementTitle}</span>
+                    </p>
+                    <p className="text-xs text-[#E73520] mt-0.5">
+                      Blocked by: {b.blocked_by} · &ldquo;{b.blocker_reason}&rdquo;
+                    </p>
                   </div>
                   <Link
                     href={`/engagements/${b.engagementId}?tab=tasks`}
-                    className="px-3 py-1 bg-rose-600 text-white rounded text-xs font-mono hover:bg-rose-700 shrink-0 self-start md:self-auto"
+                    className="px-4 py-2 bg-[#E73520] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-2 border-[#E73520] shrink-0 hover:bg-[#C62C1A] transition-colors"
                   >
-                    RESOLVE IN WORKSPACE &rarr;
+                    Resolve
+                    <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
               ))}
@@ -216,35 +196,33 @@ export default function AuditorMyWorkPage() {
           </div>
         )}
 
-        {/* Section 2: Pending Maker-Checker Sign-offs */}
-        {allApprovals.length > 0 && (
-          <div className="bg-white border border-[#E5E5E0] rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#F0F0EC] pb-3">
-              <div className="flex items-center gap-2 text-[#111110] font-mono text-xs font-bold uppercase">
-                <Shield className="w-4 h-4 text-purple-600" />
-                <span>Pending Maker-Checker Sign-offs ({allApprovals.length})</span>
-              </div>
-            </div>
-
+        {/* Pending Sign-offs */}
+        {!loading && allApprovals.length > 0 && (
+          <div className="border-2 border-[#0A0A0A] bg-white p-5 space-y-3 shadow-[4px_4px_0px_#0A0A0A]">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#0A0A0A] flex items-center gap-2 pb-3 border-b border-[#E5E5E0]">
+              <Shield className="w-4 h-4" />
+              Pending maker-checker sign-offs ({allApprovals.length})
+            </h2>
             <div className="space-y-2">
               {allApprovals.map((app) => (
                 <div
                   key={app.id}
-                  className="p-3 border border-[#E5E5E0] rounded flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-mono hover:bg-[#FAFAF8]"
+                  className="border border-[#E5E5E0] p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-[#F7F5EF] transition-colors"
                 >
                   <div>
-                    <div className="font-semibold text-[#111110]">
-                      {app.role_gate} Sign-off &mdash; <span className="text-[#555550]">{app.engagementTitle}</span>
-                    </div>
-                    <div className="text-[#777770] text-[11px] mt-0.5">
-                      Requires auditor review and verification before advancement.
-                    </div>
+                    <p className="text-sm font-bold text-[#0A0A0A]">
+                      {app.role_gate} sign-off — <span className="text-[#777770] font-normal">{app.engagementTitle}</span>
+                    </p>
+                    <p className="text-xs text-[#777770] mt-0.5">
+                      Requires review and verification before advancement.
+                    </p>
                   </div>
                   <Link
                     href={`/engagements/${app.engagementId}?tab=approvals`}
-                    className="px-3 py-1 bg-[#111110] text-white rounded text-xs font-mono hover:bg-[#2A2A28] shrink-0 self-start md:self-auto"
+                    className="px-4 py-2 bg-[#0A0A0A] hover:bg-[#E73520] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-2 border-[#0A0A0A] shrink-0 transition-colors"
                   >
-                    REVIEW & SIGN &rarr;
+                    Review & sign
+                    <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
               ))}
@@ -252,80 +230,77 @@ export default function AuditorMyWorkPage() {
           </div>
         )}
 
-        {/* Section 3: Priority Fieldwork Procedures */}
-        <div className="bg-white border border-[#E5E5E0] rounded-lg p-5 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#F0F0EC] pb-3 gap-3">
+        {/* Fieldwork Procedures */}
+        <div className="border-2 border-[#0A0A0A] bg-white shadow-[4px_4px_0px_#0A0A0A]">
+          <div className="p-5 border-b-2 border-[#0A0A0A] flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-serif font-bold text-[#111110]">Assigned Fieldwork Procedures</h3>
-              <p className="text-xs font-mono text-[#777770]">
-                Mark status, update progress, or open engagement rooms.
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#0A0A0A]">
+                Assigned fieldwork procedures
+              </h2>
+              <p className="text-xs text-[#666660] mt-0.5">
+                Update progress or open the engagement workspace.
               </p>
             </div>
-
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-[#777770]">PRIORITY:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">Priority:</span>
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="border border-[#E5E5E0] rounded px-2.5 py-1 text-[#111110] bg-white"
+                className="border-2 border-[#0A0A0A] px-3 py-1.5 text-xs font-bold text-[#0A0A0A] bg-white focus:outline-none"
               >
-                <option value="ALL">ALL</option>
-                <option value="URGENT">URGENT</option>
-                <option value="HIGH">HIGH</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="LOW">LOW</option>
+                <option value="ALL">All</option>
+                <option value="URGENT">Urgent</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
               </select>
             </div>
           </div>
 
           {loading ? (
-            <div className="py-8 flex justify-center">
-              <RefreshCw className="w-5 h-5 text-[#111110] animate-spin" />
+            <div className="py-12 flex justify-center">
+              <RefreshCw className="w-5 h-5 text-[#0A0A0A] animate-spin" />
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="py-8 text-center text-xs font-mono text-[#777770]">
-              No audit procedures match current filter.
+            <div className="py-12 text-center">
+              <FolderOpen className="w-8 h-8 text-[#777770] mx-auto mb-3" />
+              <p className="text-sm font-bold text-[#0A0A0A]">No procedures match filter</p>
+              <p className="text-xs text-[#777770] mt-1">Try changing the priority filter.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-[#E5E5E0]">
               {filteredTasks.map((t) => {
                 const isCompleted = t.status === 'COMPLETED';
                 const isBlocked = t.status === 'BLOCKED';
+                const priorityColors: Record<string, string> = {
+                  URGENT: 'bg-[#FFF2F0] text-[#E73520] border border-[#E73520]',
+                  HIGH: 'bg-amber-50 text-amber-700 border border-amber-300',
+                  MEDIUM: 'bg-[#F7F5EF] text-[#4A4A48] border border-[#E5E5E0]',
+                  LOW: 'bg-white text-[#777770] border border-[#E5E5E0]',
+                };
                 return (
                   <div
                     key={t.id}
-                    className={`p-3.5 border rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs font-mono transition-all ${
-                      isCompleted
-                        ? 'border-emerald-200 bg-emerald-50/20 opacity-70'
-                        : isBlocked
-                        ? 'border-rose-300 bg-rose-50/30'
-                        : 'border-[#E5E5E0] bg-white'
+                    className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                      isCompleted ? 'opacity-50 bg-[#F7F5EF]' : 'bg-white'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-semibold ${isCompleted ? 'line-through text-[#777770]' : 'text-[#111110]'}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-bold text-sm ${isCompleted ? 'line-through text-[#777770]' : 'text-[#0A0A0A]'}`}>
                           {t.title}
                         </span>
-                        <span
-                          className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                            t.priority === 'URGENT'
-                              ? 'bg-rose-100 text-rose-800'
-                              : t.priority === 'HIGH'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
+                        <span className={`text-[10px] px-2 py-0.5 font-bold uppercase ${priorityColors[t.priority] || priorityColors.LOW}`}>
                           {t.priority}
                         </span>
                       </div>
-                      <div className="text-[11px] text-[#777770] mt-1">
-                        Engagement: <strong>{t.engagementTitle}</strong> &bull; Due: {t.due_date || 'Current sprint'}
-                      </div>
+                      <p className="text-xs text-[#777770] mt-1">
+                        {t.engagementTitle} · Due: {t.due_date || 'Current sprint'}
+                      </p>
                       {isBlocked && (
-                        <div className="text-[11px] text-rose-700 font-semibold mt-1">
+                        <p className="text-xs text-[#E73520] font-bold mt-1">
                           Blocker: {t.blocker_reason}
-                        </div>
+                        </p>
                       )}
                     </div>
 
@@ -333,19 +308,19 @@ export default function AuditorMyWorkPage() {
                       <select
                         value={t.status}
                         onChange={(e) => handleTaskStatusChange(t.id, t.engagement_id, e.target.value as TaskStatus)}
-                        className="border border-[#E5E5E0] rounded px-2 py-1 text-xs bg-white text-[#111110]"
+                        className="border-2 border-[#0A0A0A] px-2 py-1.5 text-xs font-bold text-[#0A0A0A] bg-white focus:outline-none"
                       >
-                        <option value="TODO">TODO</option>
-                        <option value="IN_PROGRESS">IN PROGRESS</option>
-                        <option value="BLOCKED">BLOCKED</option>
-                        <option value="COMPLETED">COMPLETED</option>
+                        <option value="TODO">To do</option>
+                        <option value="IN_PROGRESS">In progress</option>
+                        <option value="BLOCKED">Blocked</option>
+                        <option value="COMPLETED">Completed</option>
                       </select>
-
                       <Link
                         href={`/engagements/${t.engagement_id}`}
-                        className="px-2.5 py-1 bg-[#111110] text-white rounded text-xs font-mono hover:bg-[#2A2A28]"
+                        className="px-3 py-1.5 bg-[#0A0A0A] hover:bg-[#E73520] text-white text-xs font-bold uppercase border-2 border-[#0A0A0A] transition-colors flex items-center gap-1"
                       >
-                        WORKSPACE &rarr;
+                        Open
+                        <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
                   </div>

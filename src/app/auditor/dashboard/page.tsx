@@ -12,10 +12,13 @@ import {
   RefreshCw,
   ArrowRight,
   Filter,
-  ChevronDown,
+  FileSpreadsheet,
+  FileText,
+  Building,
+  Download,
 } from 'lucide-react';
 import { AuditDocument, DashboardStats, UserProfile } from '@/types';
-import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { AppShell } from '@/components/layout/AppShell';
 
 export default function AuditorDashboardPage() {
@@ -29,9 +32,9 @@ export default function AuditorDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await fetch('/api/documents');
       const data = await res.json();
       if (res.ok) {
@@ -47,15 +50,23 @@ export default function AuditorDashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(true);
+    // Poll every 5s so client submissions appear immediately
+    const timer = setInterval(() => fetchDashboardData(false), 5000);
+    const onFocus = () => fetchDashboardData(false);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [fetchDashboardData]);
 
   if (!currentUser && loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <div className="flex flex-col items-center gap-2 text-[#777770] font-mono text-xs">
-          <div className="w-5 h-5 border-2 border-[#111110] border-t-transparent animate-spin" />
-          <span>LOADING AUDITOR REVIEW QUEUE...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-mono text-xs">
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">LOADING AUDITOR REVIEW QUEUE...</span>
         </div>
       </div>
     );
@@ -93,173 +104,214 @@ export default function AuditorDashboardPage() {
         }
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 font-sans">
         {/* Fast Work-Focused Review Queue Header */}
-        <div className="border-b border-[#E5E5E0] pb-5">
+        <div className="border-b-[3px] border-[#0A0A0A] pb-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-baseline gap-3">
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#111110] font-mono uppercase">
+              <span className="text-2xl sm:text-4xl font-black uppercase text-[#0A0A0A] tracking-tight font-sans">
                 REVIEW QUEUE
-              </h1>
-              <span className="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-900 font-mono text-xs font-bold tracking-wider">
-                {formattedPending} PENDING
+              </span>
+              <span className="text-xs font-bold text-[#E73520] uppercase bg-[#0A0A0A] text-white px-2.5 py-1">
+                {formattedPending} DOCUMENTS WAITING
               </span>
             </div>
 
-            {/* Right Controls: Search, Quick Filters & Refresh */}
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Search Bar */}
-              <div className="relative font-mono text-xs w-64 sm:w-72">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#777770]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search documents, clients..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#E5E5E0] text-xs text-[#111110] placeholder-[#888880] focus:outline-none focus:border-[#111110]"
-                />
-              </div>
-
-              {/* Status Filter Buttons */}
-              <div className="flex items-center border border-[#E5E5E0] bg-white p-0.5 font-mono text-xs">
-                {[
-                  { key: 'ALL', label: 'All' },
-                  { key: 'SUBMITTED', label: 'Pending' },
-                  { key: 'UNDER_REVIEW', label: 'In Review' },
-                  { key: 'CORRECTION_REQUIRED', label: 'Corrections' },
-                  { key: 'APPROVED', label: 'Approved' },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setStatusFilter(tab.key)}
-                    className={`px-3 py-1 text-[11px] uppercase tracking-wider transition-colors cursor-pointer ${
-                      statusFilter === tab.key
-                        ? 'bg-[#111110] text-white font-bold'
-                        : 'text-[#666660] hover:text-[#111110]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex items-center gap-3">
               <button
-                onClick={fetchDashboardData}
-                title="Refresh review queue"
-                className="p-1.5 border border-[#E5E5E0] bg-white hover:bg-[#FAFAF8] text-[#111110] transition-colors cursor-pointer"
+                onClick={() => fetchDashboardData(false)}
+                title="Refresh queue"
+                className="p-2 border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] cursor-pointer"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
+
+              <Link
+                href="/auditor/my-work"
+                className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-black uppercase tracking-wider flex items-center gap-2"
+              >
+                <span>MY WORK DESK</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#E73520]" />
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* Dense, Fast Table (Clicking any row navigates directly to document review) */}
-        {filteredDocuments.length === 0 ? (
-          <div className="border border-[#E5E5E0] bg-white p-16 text-center space-y-2 font-mono">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#111110] block">
-              REVIEW QUEUE IS EMPTY
+        {/* MY WORK Top Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="neo-box p-4 bg-white border-2 border-[#0A0A0A] shadow-[3px_3px_0_#0A0A0A]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#E73520] block mb-1">
+              DOCUMENTS TO REVIEW
             </span>
-            <p className="text-xs text-[#666660] font-sans">
-              No documents require review under the selected filter criteria.
-            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-3xl font-black text-[#0A0A0A]">{pendingCount}</span>
+              <span className="text-[10px] font-bold text-[#555555]">Awaiting verification</span>
+            </div>
           </div>
-        ) : (
-          <div className="border border-[#E5E5E0] bg-white overflow-x-auto">
-            <table className="w-full text-left border-collapse font-mono text-xs">
+
+          <div className="neo-box p-4 bg-white border-2 border-[#0A0A0A] shadow-[3px_3px_0_#0A0A0A]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#0A0A0A] block mb-1">
+              WAITING ON CLIENT
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-3xl font-black text-[#0A0A0A]">{stats?.corrections_required ?? 0}</span>
+              <span className="text-[10px] font-bold text-[#555555]">Correction requested</span>
+            </div>
+          </div>
+
+          <div className="neo-box p-4 bg-white border-2 border-[#0A0A0A] shadow-[3px_3px_0_#0A0A0A]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#0A0A0A] block mb-1">
+              APPROVED
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-3xl font-black text-[#0A0A0A]">{stats?.approved_total ?? 0}</span>
+              <span className="text-[10px] font-bold text-[#555555]">Completed audits</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Search & Status Filter Strip */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Quick Search */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E73520]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search document title, client, type..."
+              className="w-full pl-9 pr-4 py-2 bg-white border-2 border-[#0A0A0A] text-xs font-mono font-bold text-[#0A0A0A] placeholder:text-[#888880] focus:outline-none shadow-[2px_2px_0_#0A0A0A]"
+            />
+          </div>
+
+          {/* Filter Pills & CSV Export */}
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+            {[
+              { label: 'ALL', value: 'ALL' },
+              { label: 'PENDING', value: 'SUBMITTED' },
+              { label: 'IN REVIEW', value: 'UNDER_REVIEW' },
+              { label: 'CORRECTIONS', value: 'CORRECTION_REQUIRED' },
+              { label: 'APPROVED', value: 'APPROVED' },
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className={`px-3 py-1.5 border-2 transition-all cursor-pointer ${
+                  statusFilter === f.value
+                    ? 'border-[#0A0A0A] bg-[#0A0A0A] text-white shadow-[2px_2px_0_#E73520]'
+                    : 'border-[#0A0A0A] bg-white text-[#0A0A0A] hover:bg-[#F7F5EF]'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+
+            <button
+              onClick={() => {
+                const headers = ['Document,Client,Type,Version,Status,Submitted Date'];
+                const rows = filteredDocuments.map(
+                  (d) =>
+                    `"${d.title}","${d.client?.name || ''}","${d.document_type}","v${d.current_version}","${d.status}","${d.created_at}"`
+                );
+                const csvContent =
+                  'data:text/csv;charset=utf-8,' +
+                  [headers, ...rows].join('\n');
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement('a');
+                link.setAttribute('href', encodedUri);
+                link.setAttribute(
+                  'download',
+                  `tracera_review_queue_${new Date().toISOString().slice(0, 10)}.csv`
+                );
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="px-2.5 py-1.5 border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] flex items-center gap-1 cursor-pointer font-bold"
+              title="Export Review Queue as CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-[#E73520]" />
+              <span>CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dense Neo-Brutalist Review Table */}
+        <div className="neo-box-lg bg-white overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse font-sans text-xs">
               <thead>
-                <tr className="border-b border-[#E5E5E0] bg-[#FAFAF8] text-[10px] uppercase tracking-widest text-[#777770]">
-                  <th className="py-3 px-4 font-bold">DOCUMENT</th>
-                  <th className="py-3 px-4 font-bold">CLIENT</th>
-                  <th className="py-3 px-4 font-bold">VERSION</th>
-                  <th className="py-3 px-4 font-bold">SUBMITTED</th>
-                  <th className="py-3 px-4 font-bold">STATUS</th>
-                  <th className="py-3 px-4 font-bold">ASSIGNEE</th>
-                  <th className="py-3 px-4 font-bold text-right">ACTION</th>
+                <tr className="border-b-2 border-[#0A0A0A] bg-[#F7F5EF] text-[11px] font-semibold uppercase tracking-[0.04em] text-[#111111]">
+                  <th className="py-3 px-4">DOCUMENT</th>
+                  <th className="py-3 px-4">CLIENT</th>
+                  <th className="py-3 px-4">VERSION</th>
+                  <th className="py-3 px-4">STATUS</th>
+                  <th className="py-3 px-4">SUBMITTED</th>
+                  <th className="py-3 px-4 text-right">ACTION</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E5E0]">
-                {filteredDocuments.map((doc) => {
-                  const isSubmitted = doc.status === 'SUBMITTED';
-                  const isUnderReview = doc.status === 'UNDER_REVIEW';
-                  const isCorrection = doc.status === 'CORRECTION_REQUIRED';
-                  const isApproved = doc.status === 'APPROVED';
+              <tbody className="divide-y-2 divide-[#0A0A0A]">
+                {filteredDocuments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-[#555555]">
+                      No audit documents match the current criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDocuments.map((doc) => {
+                    const formattedDate = new Date(doc.created_at).toLocaleDateString(
+                      'en-IN',
+                      { day: '2-digit', month: 'short', year: 'numeric' }
+                    );
 
-                  return (
-                    <tr
-                      key={doc.id}
-                      onClick={() => router.push(`/auditor/documents/${doc.id}`)}
-                      className="hover:bg-[#FAFAF8] cursor-pointer transition-colors group"
-                    >
-                      <td className="py-3.5 px-4 font-sans">
-                        <div className="font-bold text-xs text-[#111110] group-hover:underline flex items-center gap-2">
-                          <span>{doc.title}</span>
-                        </div>
-                        <span className="text-[10px] text-[#777770] font-mono block mt-0.5">
-                          {doc.file_name || doc.document_type.replace(/_/g, ' ')}
-                        </span>
-                      </td>
+                    return (
+                      <tr
+                        key={doc.id}
+                        onClick={() => router.push(`/auditor/documents/${doc.id}`)}
+                        className="hover:bg-[#F7F5EF] transition-colors cursor-pointer group"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4 text-[#0A0A0A] shrink-0" />
+                            <div>
+                              <span className="font-bold text-[#0A0A0A] group-hover:text-[#E73520] group-hover:underline">
+                                {doc.title}
+                              </span>
+                              <span className="block text-[10px] text-[#555555]">
+                                {doc.document_type.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
 
-                      <td className="py-3.5 px-4 font-bold text-[#111110]">
-                        {doc.client?.name || 'ABC Traders Pvt Ltd'}
-                      </td>
+                        <td className="py-3 px-4 font-medium text-[#0A0A0A]">
+                          {doc.client?.name || 'Client'}
+                        </td>
 
-                      <td className="py-3.5 px-4 font-bold text-[#111110]">
-                        v{doc.current_version}
-                      </td>
+                        <td className="py-3 px-4 font-bold text-[#0A0A0A]">
+                          v{doc.current_version}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-[#555550]">
-                        {new Date(doc.created_at).toLocaleDateString('en-GB')}
-                      </td>
+                        <td className="py-3 px-4">
+                          <StatusBadge status={doc.status} />
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <DocumentStatusBadge status={doc.status} size="sm" />
-                      </td>
+                        <td className="py-3 px-4 text-[#555555]">
+                          {formattedDate}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-[#555550]">
-                        {doc.assigned_auditor?.name || 'Rahul Sharma, CA'}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                            isSubmitted
-                              ? 'bg-[#111110] text-white group-hover:bg-[#2A2A28]'
-                              : isUnderReview
-                              ? 'bg-amber-600 text-white'
-                              : isCorrection
-                              ? 'text-[#E03E1A] bg-orange-50 border border-orange-200'
-                              : 'text-emerald-800 bg-emerald-50 border border-emerald-200'
-                          }`}
-                        >
-                          <span>
-                            {isSubmitted
-                              ? 'Review →'
-                              : isUnderReview
-                              ? 'Resume →'
-                              : isCorrection
-                              ? 'Pending Client'
-                              : 'Certified'}
+                        <td className="py-3 px-4 text-right">
+                          <span className="inline-flex items-center gap-1 text-[#E73520] font-black group-hover:underline">
+                            <span>REVIEW</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </span>
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {/* Table Footer: Summary & Keyboard Guide */}
-        <div className="flex flex-wrap items-center justify-between text-[11px] font-mono text-[#777770] pt-1">
-          <span>
-            Showing <strong>{filteredDocuments.length}</strong> of <strong>{documents.length}</strong> audit records
-          </span>
-          <div className="flex items-center gap-4">
-            <span>Click any row to open review console</span>
-            <span>·</span>
-            <span>Press <kbd className="px-1 py-0.5 border border-[#E5E5E0] bg-white text-[#111110]">⌘K</kbd> to search</span>
           </div>
         </div>
       </div>

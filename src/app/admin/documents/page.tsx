@@ -28,34 +28,25 @@ export default function AdminDocumentsPage() {
     loadDocs();
   }, []);
 
-  const adminUser: UserProfile = {
-    id: 'admin-1',
-    name: 'Admin (Partner)',
-    email: 'admin@demo.com',
-    role: 'ADMIN',
-    client_id: null,
-    created_at: '',
-  };
-
   return (
-    <AppShell currentUser={adminUser}>
+    <AppShell>
       <div className="space-y-6">
-        <div className="border-b border-[#E5E5E0] pb-6">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold block mb-1">
-            FIRM COMPLIANCE REPOSITORY
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111110]">
-            Firm-Wide Documents
+        <div className="border-b-2 border-[#0A0A0A] pb-6">
+          <p className="text-[10px] font-bold text-[#E73520] uppercase tracking-widest block mb-1">
+            Firm compliance repository
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">
+            Firm-wide documents
           </h1>
           <p className="text-xs text-[#666660]">
             Master document index across all engagements, versions, and review states.
           </p>
         </div>
 
-        <div className="border border-[#E5E5E0] bg-white overflow-x-auto font-mono text-xs">
-          <table className="w-full text-left border-collapse">
+        <div className="border-2 border-[#0A0A0A] bg-white overflow-x-auto shadow-[4px_4px_0px_#0A0A0A]">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[#E5E5E0] bg-[#FAFAF8] text-[10px] uppercase tracking-widest text-[#777770]">
+              <tr className="border-b-2 border-[#0A0A0A] bg-[#F7F5EF] text-[10px] uppercase tracking-widest text-[#777770]">
                 <th className="py-3 px-4 font-bold">Client</th>
                 <th className="py-3 px-4 font-bold">Document</th>
                 <th className="py-3 px-4 font-bold">Version</th>
@@ -67,7 +58,7 @@ export default function AdminDocumentsPage() {
               {documents.map((doc) => (
                 <tr key={doc.id} className="hover:bg-[#FAFAF8]">
                   <td className="py-3.5 px-4 font-bold text-[#111110]">
-                    {doc.client?.name || 'ABC Traders Pvt Ltd'}
+                    {doc.client?.name || 'Client Entity'}
                   </td>
                   <td className="py-3.5 px-4">
                     <span className="font-bold text-[#111110] block font-sans">

@@ -107,7 +107,7 @@ export function RequestCorrectionModal({
             </div>
             <div className="flex justify-between">
               <span className="text-[#777770]">CLIENT WORKSPACE:</span>
-              <span className="font-bold text-[#111110]">{document.client?.name || 'ABC Traders Pvt Ltd'}</span>
+              <span className="font-bold text-[#111110]">{document.client?.name || 'Client Entity'}</span>
             </div>
           </div>
 

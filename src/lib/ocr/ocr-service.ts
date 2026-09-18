@@ -140,7 +140,7 @@ export const ocrService = {
       documentType,
       invoiceNumber: 'DOC-VERIFIED-' + versionNumber,
       invoiceDate: new Date().toISOString().split('T')[0],
-      vendorName: 'ABC Traders / Registered Taxpayer',
+      vendorName: 'Registered Taxpayer',
       gstin: '27AAXPS5678G1Z2',
       subtotal: 50000,
       gst: 9000,

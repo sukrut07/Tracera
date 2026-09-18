@@ -2,7 +2,8 @@ import { cookies } from 'next/headers';
 import { getUserByEmail, getUserById } from '@/lib/db';
 import { Role, UserProfile } from '@/types';
 
-const SESSION_COOKIE_NAME = 'trecera_session_user';
+export const SESSION_COOKIE_NAME = 'trecera_session_user';
+export const SESSION_ROLE_COOKIE_NAME = 'trecera_session_role';
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
   try {
@@ -25,12 +26,15 @@ export async function setSessionUser(email: string): Promise<UserProfile | null>
   if (!user) return null;
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, user.email, {
+  const cookieOptions = {
     path: '/',
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
+  };
+
+  cookieStore.set(SESSION_COOKIE_NAME, user.email, cookieOptions);
+  cookieStore.set(SESSION_ROLE_COOKIE_NAME, user.role, cookieOptions);
 
   return user;
 }
@@ -38,6 +42,7 @@ export async function setSessionUser(email: string): Promise<UserProfile | null>
 export async function clearSession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.delete(SESSION_ROLE_COOKIE_NAME);
 }
 
 export async function requireAuth(): Promise<UserProfile> {

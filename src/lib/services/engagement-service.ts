@@ -89,8 +89,8 @@ export const engagementService = {
    * Create a new Engagement based on Service Type Template
    */
   async createEngagement(user: UserProfile, params: CreateEngagementParams): Promise<Engagement> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
-      throw new WorkflowError(403, 'Forbidden: Only auditors and practice managers can initiate engagements');
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
+      throw new WorkflowError(403, 'Forbidden: Only auditors, partners, and practice managers can initiate engagements');
     }
 
     const client = getClientById(params.clientId);
@@ -253,7 +253,7 @@ export const engagementService = {
     targetStageNumber: number,
     notes?: string
   ): Promise<Engagement> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
       throw new WorkflowError(403, 'Forbidden: Only auditors can advance engagement stages');
     }
 
@@ -344,7 +344,7 @@ export const engagementService = {
     message?: string,
     dueDate?: string
   ): Promise<EngagementChecklistItem> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
       throw new WorkflowError(403, 'Forbidden: Only auditors can request checklist documents');
     }
 
@@ -446,8 +446,8 @@ export const engagementService = {
       dueDate?: string;
     }
   ): Promise<EngagementTask> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
-      throw new WorkflowError(403, 'Forbidden: Only auditors can create audit tasks');
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
+      throw new WorkflowError(403, 'Forbidden: Only auditors can create engagement tasks');
     }
 
     const assignedUser = taskData.assignedToId ? getUserById(taskData.assignedToId) : user;
@@ -560,7 +560,7 @@ export const engagementService = {
     status: 'APPROVED' | 'REJECTED',
     remarks?: string
   ): Promise<EngagementApproval> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
       throw new WorkflowError(403, 'Forbidden: Only audit personnel can sign off approvals');
     }
 
@@ -716,7 +716,18 @@ export const engagementService = {
       passed: Boolean(approvalsPassed),
     };
 
-    // 5. Billing & Fee Settlement
+    // 5. Open Issues & Blockers
+    const openIssues = (engagement.issues || []).filter((i) => i.status === 'OPEN' || i.status === 'IN_PROGRESS');
+    const issuesCheck = {
+      id: 'issues',
+      title: 'Open Issues & Client Blockers',
+      description: openIssues.length === 0
+        ? 'No active client blockers or unresolved audit issues'
+        : `${openIssues.length} unresolved issue(s) remaining`,
+      passed: openIssues.length === 0,
+    };
+
+    // 6. Billing & Fee Settlement
     const billingPassed = engagement.billing_status === 'PAID';
     const billingCheck = {
       id: 'billing',
@@ -727,7 +738,7 @@ export const engagementService = {
       passed: billingPassed,
     };
 
-    const checks = [stagesCheck, docsCheck, tasksCheck, approvalsCheck, billingCheck];
+    const checks = [stagesCheck, docsCheck, tasksCheck, approvalsCheck, issuesCheck, billingCheck];
     const passedCount = checks.filter((c) => c.passed).length;
 
     return {
@@ -746,7 +757,7 @@ export const engagementService = {
     engagementId: string,
     closureSummary: string
   ): Promise<Engagement> {
-    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUDITOR' && user.role !== 'ADMIN' && user.role !== 'PARTNER') {
       throw new WorkflowError(403, 'Forbidden: Only authorized CA partners/auditors can close an engagement');
     }
 

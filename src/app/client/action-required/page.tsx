@@ -1,75 +1,73 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
+  FileText,
+  Clock,
   ArrowRight,
-  ArrowUpRight,
-  CheckCircle2,
   RefreshCw,
-  FileSpreadsheet,
+  CheckCircle2,
+  UploadCloud,
 } from 'lucide-react';
-import { AuditDocument, UserProfile } from '@/types';
-import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
-import { UploadCorrectionModal } from '@/components/client/UploadCorrectionModal';
 import { AppShell } from '@/components/layout/AppShell';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { UploadCorrectionModal } from '@/components/client/UploadCorrectionModal';
+import { AuditDocument, UserProfile } from '@/types';
 
-export default function ClientActionRequiredPage() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+export default function ActionRequiredPage() {
   const [documents, setDocuments] = useState<AuditDocument[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [correctionDoc, setCorrectionDoc] = useState<AuditDocument | null>(null);
 
-  const fetchCorrections = useCallback(async () => {
+  const fetchCorrections = async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/documents');
       const data = await res.json();
       if (res.ok) {
-        const allDocs = data.documents || [];
-        const corrections = allDocs.filter(
-          (d: AuditDocument) => d.status === 'CORRECTION_REQUIRED'
-        );
-        setDocuments(corrections);
+        const allDocs: AuditDocument[] = data.documents || [];
+        setDocuments(allDocs.filter((d) => d.status === 'CORRECTION_REQUIRED'));
         setCurrentUser(data.currentUser || null);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load corrections:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchCorrections();
-  }, [fetchCorrections]);
+  }, []);
 
   return (
     <AppShell
       currentUser={
         currentUser || {
-          id: '1',
-          name: 'ABC Traders',
+          id: 'usr-client-001',
+          name: 'Client User',
           email: 'client@demo.com',
           role: 'CLIENT',
-          client_id: 'c1',
+          client_id: null,
           created_at: '',
         }
       }
     >
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6 max-w-5xl mx-auto font-sans">
         {/* Header */}
-        <div className="border-b border-[#E5E5E0] pb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="border-b-[3px] border-[#0A0A0A] pb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold mb-1">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#E73520] mb-1">
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>STATUTORY AUDITOR NOTICES</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#111110] uppercase font-mono">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0A0A0A]">
               Action Required ({documents.length})
             </h1>
-            <p className="text-xs text-[#666660] font-sans mt-1">
+            <p className="text-xs text-[#555550] mt-1">
               The documents below have active revision requests issued by your engagement Chartered Accountant.
             </p>
           </div>
@@ -77,35 +75,35 @@ export default function ClientActionRequiredPage() {
           <button
             onClick={fetchCorrections}
             title="Refresh action items"
-            className="p-2 border border-[#E5E5E0] bg-white hover:bg-[#FAFAF8] text-[#111110] transition-colors cursor-pointer"
+            className="p-2 border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] cursor-pointer transition-transform hover:translate-x-[1px] hover:translate-y-[1px]"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        {/* List of items needing correction */}
+        {/* List of items needing correction / Empty State */}
         {loading && documents.length === 0 ? (
-          <div className="p-12 text-center text-[#777770] font-mono text-xs space-y-2">
-            <div className="w-5 h-5 border-2 border-[#111110] border-t-transparent animate-spin mx-auto" />
-            <span>CHECKING PENDING AUDITOR NOTICES...</span>
+          <div className="p-12 text-center text-[#555550] text-xs space-y-2 font-bold">
+            <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin mx-auto" />
+            <span>Checking pending auditor notices...</span>
           </div>
         ) : documents.length === 0 ? (
-          <div className="border border-[#E5E5E0] bg-white p-12 text-center space-y-3 font-mono">
-            <div className="w-10 h-10 bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-5 h-5" />
+          <div className="neo-box-lg bg-white border-2 border-[#0A0A0A] p-12 text-center space-y-3 shadow-[6px_6px_0_#0A0A0A]">
+            <div className="w-12 h-12 bg-[#F7F5EF] border-2 border-[#0A0A0A] text-emerald-700 flex items-center justify-center mx-auto shadow-[2px_2px_0_#0A0A0A]">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-[#111110] uppercase">
-              NO PENDING ACTIONS
+            <h3 className="text-base font-bold text-[#0A0A0A]">
+              No Pending Actions
             </h3>
-            <p className="text-xs text-[#666660] font-sans max-w-sm mx-auto">
+            <p className="text-xs text-[#666660] max-w-sm mx-auto leading-relaxed">
               All your submitted audit documents are currently under review or have already received statutory sign-off.
             </p>
             <div className="pt-2">
               <Link
                 href="/client/dashboard"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111110] text-white text-xs uppercase tracking-wider font-bold"
+                className="neo-btn bg-[#0A0A0A] hover:bg-[#E73520] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2"
               >
-                ← Return to Overview
+                <span>← Return to Overview</span>
               </Link>
             </div>
           </div>
@@ -116,51 +114,52 @@ export default function ClientActionRequiredPage() {
                 doc.latest_review?.remarks ||
                 doc.latest_correction_reason ||
                 doc.current_review?.comment ||
-                'Invoice INV-204 from Balaji Enterprises is missing from ledger. Reconcile with GSTR-2B and re-upload.';
+                'Discrepancy identified during audit verification. Please reconcile and upload the corrected version.';
 
               return (
                 <div
                   key={doc.id}
-                  className="border-2 border-[#E03E1A] bg-white p-6 sm:p-7 space-y-4 shadow-xs"
+                  className="neo-box bg-[#FFF2F0] border-2 border-[#0A0A0A] p-6 sm:p-7 space-y-4 shadow-[6px_6px_0_#0A0A0A]"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-100 pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#0A0A0A] pb-3">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-lg font-bold text-[#111110] uppercase">
+                      <span className="text-lg font-bold text-[#0A0A0A]">
                         {doc.title}
                       </span>
-                      <DocumentStatusBadge status={doc.status} size="sm" />
+                      <StatusBadge status={doc.status} size="sm" />
                     </div>
 
-                    <span className="text-xs font-mono text-[#777770]">
-                      Current: <strong>Version {doc.current_version}</strong> · Submitted {new Date(doc.created_at).toLocaleDateString('en-GB')}
+                    <span className="text-xs text-[#555550]">
+                      Current: <strong className="text-[#0A0A0A]">Version {doc.current_version}</strong> • Submitted{' '}
+                      {new Date(doc.created_at).toLocaleDateString('en-GB')}
                     </span>
                   </div>
 
                   {/* Auditor Reason Callout */}
-                  <div className="space-y-1.5 font-mono text-xs">
+                  <div className="space-y-1.5 text-xs">
                     <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
-                      AUDITOR REMARKS (RAHUL SHARMA, CA):
+                      AUDITOR INSTRUCTION ({doc.assigned_auditor?.name || 'ASSIGNED CA'}):
                     </span>
-                    <p className="text-sm font-sans text-[#111110] bg-orange-50/80 p-4 border-l-2 border-[#E03E1A] leading-relaxed">
+                    <p className="text-sm text-[#0A0A0A] bg-white p-4 border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] font-semibold leading-relaxed">
                       "{reasonText}"
                     </p>
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-2 flex flex-wrap items-center gap-3 font-mono text-xs">
+                  <div className="pt-2 flex flex-wrap items-center gap-3 text-xs">
                     <Link
                       href={`/client/documents/${doc.id}`}
-                      className="px-4 py-2 border border-[#111110] bg-white hover:bg-[#FAFAF8] text-[#111110] uppercase tracking-wider font-bold transition-colors"
+                      className="neo-btn bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] px-4 py-2 text-xs font-bold uppercase tracking-wider"
                     >
                       Review Audit Record
                     </Link>
 
                     <button
                       onClick={() => setCorrectionDoc(doc)}
-                      className="px-5 py-2 bg-[#E03E1A] hover:bg-[#C2410C] text-white uppercase tracking-wider font-bold transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+                      className="neo-btn bg-[#E73520] hover:bg-[#D32814] text-white px-5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer"
                     >
-                      <span>Upload Version {doc.current_version + 1}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <UploadCloud className="w-4 h-4" />
+                      <span>Upload Version {doc.current_version + 1} →</span>
                     </button>
                   </div>
                 </div>

@@ -15,6 +15,7 @@ import {
   Download,
   ShieldCheck,
   Check,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { AuditDocument, DocumentVersion, UserProfile } from '@/types';
 import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
@@ -94,10 +95,10 @@ export default function AuditorDocumentReviewPage({
 
   if (loading && !document) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] font-mono text-xs text-[#777770]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] font-mono text-xs text-[#4A4A48]">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-5 h-5 border-2 border-[#111110] border-t-transparent animate-spin" />
-          <span>OPENING REVIEW WORKSPACE...</span>
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">OPENING AUDIT REVIEW CONSOLE...</span>
         </div>
       </div>
     );
@@ -105,17 +106,19 @@ export default function AuditorDocumentReviewPage({
 
   if (error || !document) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center font-mono text-xs">
-        <AlertCircle className="w-8 h-8 text-[#E03E1A] mx-auto mb-2" />
-        <h3 className="font-bold text-[#111110]">DOCUMENT UNAVAILABLE</h3>
-        <p className="text-[#666660] mt-1">{error || 'Could not locate requested audit record'}</p>
-        <Link
-          href="/auditor/dashboard"
-          className="mt-4 inline-block px-4 py-2 bg-[#111110] text-white uppercase tracking-wider font-bold"
-        >
-          ← Return to Review Queue
-        </Link>
-      </div>
+      <AppShell>
+        <div className="p-8 neo-box-lg bg-[#FFF2F0] text-center space-y-4 max-w-lg mx-auto font-mono">
+          <AlertCircle className="w-8 h-8 text-[#E73520] mx-auto" />
+          <h2 className="text-lg font-black uppercase text-[#0A0A0A]">DOCUMENT NOT FOUND</h2>
+          <p className="text-xs text-[#4A4A48]">{error || 'Unable to retrieve document.'}</p>
+          <Link
+            href="/auditor/dashboard"
+            className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-bold uppercase tracking-wider"
+          >
+            ← BACK TO REVIEW QUEUE
+          </Link>
+        </div>
+      </AppShell>
     );
   }
 
@@ -141,8 +144,8 @@ export default function AuditorDocumentReviewPage({
     <AppShell
       currentUser={
         currentUser || {
-          id: '2',
-          name: 'Rahul Sharma',
+          id: 'usr-auditor-001',
+          name: 'Auditor',
           email: 'auditor@demo.com',
           role: 'AUDITOR',
           client_id: null,
@@ -150,53 +153,53 @@ export default function AuditorDocumentReviewPage({
         }
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 font-mono">
         {/* Top Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E5E5E0] pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b-[3px] border-[#0A0A0A] pb-5">
           <div className="flex items-center gap-3">
             <Link
               href="/auditor/dashboard"
               title="Return to Review Queue"
-              className="p-2 border border-[#E5E5E0] bg-white hover:bg-[#FAFAF8] text-[#111110] transition-colors"
+              className="p-2 border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] transition-transform hover:translate-x-0.5 hover:translate-y-0.5"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
 
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#777770]">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[#777770] font-bold">
                 <span>{document.client?.name || 'Client'}</span>
                 <span>·</span>
                 <span>{document.document_type.replace(/_/g, ' ')}</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#111110] flex items-center gap-3 mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-black text-[#0A0A0A] flex items-center gap-3 mt-0.5 font-sans">
                 <span>{document.title}</span>
-                <span className="text-sm font-mono text-[#555550]">
-                  Version {document.current_version}
+                <span className="text-sm font-mono text-[#4A4A48] font-bold">
+                  v{document.current_version}
                 </span>
                 <DocumentStatusBadge status={document.status} size="sm" />
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 font-mono text-xs">
+          <div className="flex items-center gap-3 text-xs">
             <a
               href={`/api/documents/${document.id}/report`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-2 border border-[#E5E5E0] bg-white text-[#111110] hover:bg-[#FAFAF8] uppercase tracking-wider font-bold transition-colors"
+              className="neo-btn bg-white text-[#0A0A0A] px-3.5 py-2 uppercase tracking-wider font-bold flex items-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Audit Report (PDF)</span>
+              <span>AUDIT DOSSIER (PDF)</span>
             </a>
 
             {isSubmitted && (
               <button
                 onClick={handleStartReview}
                 disabled={isStartingReview}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#111110] hover:bg-[#2A2A28] text-white uppercase tracking-wider font-bold transition-colors cursor-pointer"
+                className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 uppercase tracking-wider font-black flex items-center gap-1.5"
               >
-                <Eye className="w-3.5 h-3.5" />
-                <span>{isStartingReview ? 'Starting...' : 'Begin Review'}</span>
+                <Eye className="w-3.5 h-3.5 text-[#E73520]" />
+                <span>{isStartingReview ? 'STARTING...' : 'BEGIN REVIEW'}</span>
               </button>
             )}
           </div>
@@ -204,11 +207,11 @@ export default function AuditorDocumentReviewPage({
 
         {/* 60 / 40 Split Layout: Dominant Document Viewer on Left */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT: 60% (7 cols on 12-grid) Document Viewer */}
+          {/* LEFT: 60% Document Viewer */}
           <div className="lg:col-span-7 space-y-4">
             {/* Version Selector Bar */}
-            <div className="border border-[#E5E5E0] bg-white p-3 font-mono text-xs flex flex-wrap items-center justify-between gap-3">
-              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
+            <div className="neo-box p-3 text-xs flex flex-wrap items-center justify-between gap-3 bg-white">
+              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-black">
                 VERSION SELECTOR:
               </span>
 
@@ -221,215 +224,194 @@ export default function AuditorDocumentReviewPage({
                     <button
                       key={v.id}
                       onClick={() => setSelectedVersionNumber(v.version_number)}
-                      className={`px-3 py-1 text-xs uppercase tracking-wider font-bold cursor-pointer transition-colors border ${
+                      className={`px-3 py-1 font-bold text-xs border-2 transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-[#111110] text-white border-[#111110]'
-                          : 'bg-[#FAFAF8] text-[#555550] border-[#E5E5E0] hover:bg-white'
+                          ? 'border-[#0A0A0A] bg-[#0A0A0A] text-white shadow-[2px_2px_0_#E73520]'
+                          : 'border-[#0A0A0A] bg-[#F7F5EF] text-[#0A0A0A] hover:bg-white'
                       }`}
                     >
-                      v{v.version_number} {isCurrent ? '(CURRENT)' : ''}
+                      v{v.version_number}
+                      {isCurrent && (
+                        <span className="ml-1.5 text-[9px] uppercase tracking-wider font-bold">
+                          [LATEST]
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Document Viewer Canvas */}
-            <DocumentViewer
-              version={activeVersion}
-              title={document.title}
-            />
+            {/* Document Viewer Frame */}
+            <div className="neo-box-lg bg-white overflow-hidden" data-cursor="document">
+              <DocumentViewer version={activeVersion} title={document.title} />
+            </div>
 
-            {/* Version Metadata Summary */}
-            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs grid grid-cols-2 sm:grid-cols-4 gap-4 text-[#555550]">
+            {/* Version Metadata Strip */}
+            <div className="p-3 border-2 border-[#0A0A0A] bg-[#F7F5EF] text-xs flex flex-wrap items-center justify-between gap-2 text-[#4A4A48]">
               <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
-                  VERSION NUMBER
-                </span>
-                <span className="font-bold text-[#111110] block mt-0.5">
-                  v{activeVersion.version_number}
-                </span>
+                <span>FILE: </span>
+                <strong className="text-[#0A0A0A]">{activeVersion.file_name}</strong>
               </div>
               <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
-                  FILE NAME
-                </span>
-                <span className="font-bold text-[#111110] block mt-0.5 truncate" title={activeVersion.file_name}>
-                  {activeVersion.file_name}
-                </span>
-              </div>
-              <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
-                  UPLOADED AT
-                </span>
-                <span className="font-bold text-[#111110] block mt-0.5">
-                  {new Date(activeVersion.uploaded_at).toLocaleDateString('en-GB')}
-                </span>
-              </div>
-              <div>
-                <span className="text-[9px] uppercase tracking-widest text-[#777770] block">
-                  STORAGE
-                </span>
-                <span className="font-bold text-emerald-800 block mt-0.5">
-                  Immutable
-                </span>
+                <span>UPLOADED: </span>
+                <strong className="text-[#0A0A0A]">
+                  {new Date(activeVersion.uploaded_at).toLocaleString('en-IN', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </strong>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: 40% (5 cols on 12-grid) Review Console */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* 4-Point CA Statutory Checklist */}
-            <ReviewChecklist />
+          {/* RIGHT: 40% Review Console & Statutory Checklist */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* 4-Point Statutory Verification Checklist */}
+            <div className="neo-box bg-white p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-[#0A0A0A]">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#E73520]" />
+                  <h3 className="text-xs font-black uppercase text-[#0A0A0A]">
+                    STATUTORY VERIFICATION CHECKLIST
+                  </h3>
+                </div>
+                <span className="text-[10px] text-[#777770] font-bold">
+                  ICAI SA 500
+                </span>
+              </div>
 
-            {/* Auditor Comments Area */}
-            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs space-y-2">
-              <label className="block text-[10px] uppercase tracking-widest text-[#777770] font-bold">
-                AUDITOR VERIFICATION REMARKS
-              </label>
-              <textarea
-                rows={3}
-                value={auditorComments}
-                onChange={(e) => setAuditorComments(e.target.value)}
-                placeholder="Enter statutory review notes, line item verification remarks, or instructions..."
-                className="w-full p-2.5 bg-[#FAFAF8] border border-[#E5E5E0] text-xs text-[#111110] focus:outline-none focus:border-[#111110] font-sans"
-              />
+              <ReviewChecklist />
             </div>
 
-            {/* Review Decision Block */}
-            <div className="border border-[#E5E5E0] bg-white p-5 font-mono text-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-2">
-                <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
-                  REVIEW DECISION
+            {/* Decision Actions Block */}
+            <div className="neo-box-lg bg-white p-5 space-y-4 shadow-[6px_6px_0_#0A0A0A]">
+              <div className="pb-3 border-b-2 border-[#0A0A0A] flex items-center justify-between">
+                <span className="text-xs font-black uppercase text-[#0A0A0A]">
+                  AUDITOR DECISION
                 </span>
-                <span className="text-[10px] text-[#777770]">
-                  Section 143(3) Verified
+                <span className="text-[10px] text-[#E73520] font-bold">
+                  MUTATION ENGINE
                 </span>
               </div>
 
               {isApproved ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
-                  <div className="flex items-center gap-2 font-bold text-xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                    <span>DOCUMENT APPROVED & CERTIFIED</span>
+                <div className="p-4 bg-[#C7F36B]/20 border-2 border-[#0A0A0A] space-y-2">
+                  <div className="flex items-center gap-2 text-[#0A0A0A] font-black text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-[#0A0A0A]" />
+                    <span>DOCUMENT STATUTORILY APPROVED</span>
                   </div>
-                  <p className="text-[11px] text-emerald-800 font-sans">
-                    Audit sign-off logged to immutable history. Document locked against modifications.
+                  <p className="text-xs text-[#4A4A48] leading-relaxed">
+                    This document has passed all 4 statutory checklist gates and is
+                    certified under Section 143(3).
                   </p>
                 </div>
               ) : isCorrection ? (
-                <div className="p-4 bg-orange-50 border border-orange-200 text-[#9A3412] space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#C2410C]">
-                    <AlertTriangle className="w-4 h-4 text-[#E03E1A]" />
-                    <span>CORRECTION NOTICE ISSUED</span>
+                <div className="p-4 bg-[#FFF2F0] border-2 border-[#0A0A0A] space-y-2">
+                  <div className="flex items-center gap-2 text-[#E73520] font-black text-xs">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>CORRECTION NOTICE ACTIVE</span>
                   </div>
-                  <p className="text-xs font-sans text-[#111110] bg-white p-2.5 border border-orange-200">
-                    "{document.current_review?.comment || document.latest_correction_reason || 'Client revision requested.'}"
-                  </p>
-                </div>
-              ) : isSubmitted ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 text-blue-900 space-y-2">
-                  <span className="font-bold block text-xs">AWAITING AUDIT REVIEW</span>
-                  <p className="text-xs font-sans text-blue-800">
-                    Click "Begin Review" above to take ownership and verify line items.
+                  <p className="text-xs text-[#4A4A48] leading-relaxed">
+                    Awaiting client to upload corrected Version {document.current_version + 1}.
+                    Version {document.current_version} is preserved in immutable audit storage.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-xs font-sans text-[#555550]">
-                    Verify all 4 checklist points before issuing approval or requesting a client correction.
-                  </p>
+                <div className="space-y-4">
+                  {/* Comments Input */}
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider font-black text-[#0A0A0A] mb-1">
+                      AUDITOR WORKING PAPERS / NOTES:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={auditorComments}
+                      onChange={(e) => setAuditorComments(e.target.value)}
+                      placeholder="Add reconciliation notes, matching variances, or statutory citations..."
+                      className="w-full p-2.5 bg-[#F7F5EF] border-2 border-[#0A0A0A] text-xs font-mono font-bold text-[#0A0A0A] focus:outline-none focus:bg-white"
+                    />
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-2">
+                  {/* Decision Buttons */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
                       onClick={() => setIsCorrectionOpen(true)}
-                      className="py-2.5 px-3 border border-[#E03E1A] bg-white text-[#C2410C] hover:bg-orange-50 text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      className="neo-btn bg-[#FFF2F0] hover:bg-[#E73520] hover:text-white text-[#E73520] py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+                      data-cursor="action"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 text-[#E03E1A]" />
-                      <span>Request Correction</span>
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>CORRECTION</span>
                     </button>
 
                     <button
                       onClick={() => setIsApproveOpen(true)}
-                      className="py-2.5 px-3 bg-[#111110] hover:bg-[#2A2A28] text-white text-xs uppercase tracking-wider font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      className="neo-btn bg-[#C7F36B] hover:bg-[#b2e255] text-[#0A0A0A] py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+                      data-cursor="action"
                     >
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Approve Document</span>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>APPROVE</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Signature Audit Trail Progression */}
-            <div className="border border-[#E5E5E0] bg-white p-5 font-mono text-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-2">
-                <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
-                  IMMUTABLE AUDIT TRAIL
-                </span>
-                <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 border border-emerald-200">
-                  SEC. 143(3)
+            {/* Signature Audit Trail Component */}
+            <div className="neo-box bg-[#F7F5EF] p-5 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-[#0A0A0A]">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-[#0A0A0A]" />
+                  <h3 className="text-xs font-black uppercase text-[#0A0A0A]">
+                    IMMUTABLE AUDIT TRAIL
+                  </h3>
+                </div>
+                <span className="text-[10px] text-[#777770] font-bold">
+                  SEC 143(3)
                 </span>
               </div>
 
-              <div className="space-y-4 pt-1">
-                {document.audit_logs?.map((log, idx, arr) => {
-                  const isLast = idx === arr.length - 1;
-                  const comment = log.metadata?.comment || log.metadata?.reason;
-
-                  return (
-                    <div key={log.id || idx} className="relative pl-5">
-                      {!isLast && (
-                        <div className="absolute left-[4px] top-3 w-0.5 h-[calc(100%+14px)] bg-[#E5E5E0]" />
-                      )}
-                      <div className="absolute left-0 top-1.5 w-2 h-2 rounded-none bg-[#111110] border border-[#111110]" />
-
-                      <div className="space-y-0.5">
-                        <div className="flex items-center justify-between text-[10px] text-[#777770]">
-                          <span className="font-bold text-[#111110]">
-                            ● {log.action} {log.metadata?.version ? `(v${log.metadata.version})` : ''}
-                          </span>
-                          <span>{new Date(log.created_at).toLocaleDateString('en-GB')}</span>
-                        </div>
-                        <div className="text-[11px] text-[#555550]">
-                          By <strong className="text-[#111110]">{log.performed_by_name}</strong> ({log.performed_by_role})
-                        </div>
-                        {comment ? (
-                          <p className="text-[11px] font-sans text-[#333330] bg-[#FAFAF8] p-2 border-l-2 border-[#111110] mt-1">
-                            "{comment}"
-                          </p>
-                        ) : null}
+              <div className="relative pl-5 space-y-4 before:absolute before:top-1.5 before:bottom-1.5 before:left-[5px] before:w-[2px] before:bg-[#0A0A0A]">
+                {document.audit_logs?.map((log, idx) => (
+                  <div key={log.id || idx} className="relative text-xs">
+                    <div className="absolute -left-[23px] top-1 w-3 h-3 rounded-full border-2 border-[#0A0A0A] bg-[#E73520]" />
+                    <div className="p-2.5 border border-[#0A0A0A] bg-white">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-bold text-[#0A0A0A] text-[10px]">
+                          {log.action.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-[9px] text-[#777770]">
+                          {new Date(log.created_at).toLocaleTimeString('en-IN', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-[#4A4A48]">
+                        by <strong className="text-[#0A0A0A]">{log.actor_name}</strong> ({log.actor_role})
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
         {/* Modals */}
-        {document && (
-          <>
-            <ApproveModal
-              document={document}
-              isOpen={isApproveOpen}
-              onClose={() => setIsApproveOpen(false)}
-              onSuccess={() => {
-                fetchDocument();
-              }}
-            />
+        <ApproveModal
+          isOpen={isApproveOpen}
+          document={document}
+          onClose={() => setIsApproveOpen(false)}
+          onSuccess={fetchDocument}
+        />
 
-            <RequestCorrectionModal
-              document={document}
-              isOpen={isCorrectionOpen}
-              onClose={() => setIsCorrectionOpen(false)}
-              onSuccess={() => {
-                fetchDocument();
-              }}
-            />
-          </>
-        )}
+        <RequestCorrectionModal
+          isOpen={isCorrectionOpen}
+          document={document}
+          onClose={() => setIsCorrectionOpen(false)}
+          onSuccess={fetchDocument}
+        />
       </div>
     </AppShell>
   );

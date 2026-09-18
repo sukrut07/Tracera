@@ -18,6 +18,10 @@ import {
   Shield,
   Sliders,
   X,
+  Briefcase,
+  Layers,
+  Award,
+  LogOut,
 } from 'lucide-react';
 import { AuditDocument } from '@/types';
 
@@ -57,13 +61,38 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
   }, [isOpen]);
 
   // Static navigation actions
-  const staticActions = [
+  const staticActions: CommandItem[] = [
     {
-      id: 'client-dashboard',
-      label: 'Go to Client Overview',
+      id: 'engagements-hub',
+      label: 'Open All Engagements & Audit Rooms',
+      category: 'Engagements',
+      icon: Briefcase,
+      detail: 'Active Practice Engagements',
+      action: () => router.push('/auditor/engagements'),
+    },
+    {
+      id: 'partner-desk',
+      label: 'Go to Partner Approval Desk',
       category: 'Navigation',
-      icon: LayoutDashboard,
-      action: () => router.push('/client/dashboard'),
+      icon: Award,
+      detail: 'Sign-off Queue & Governance',
+      action: () => router.push('/partner/dashboard'),
+    },
+    {
+      id: 'auditor-my-work',
+      label: 'Go to Auditor Daily Work Desk',
+      category: 'Navigation',
+      icon: Eye,
+      detail: 'Assigned Procedures & Blockers',
+      action: () => router.push('/auditor/my-work'),
+    },
+    {
+      id: 'workflow-templates',
+      label: 'Inspect Workflow Templates',
+      category: 'Admin',
+      icon: Layers,
+      detail: 'Statutory Audit, Tax Audit, GST, ITR',
+      action: () => router.push('/admin/workflows'),
     },
     {
       id: 'auditor-dashboard',
@@ -71,6 +100,13 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
       category: 'Navigation',
       icon: Eye,
       action: () => router.push('/auditor/dashboard'),
+    },
+    {
+      id: 'client-dashboard',
+      label: 'Go to Client Overview',
+      category: 'Navigation',
+      icon: LayoutDashboard,
+      action: () => router.push('/client/dashboard'),
     },
     {
       id: 'admin-eval',
@@ -92,7 +128,7 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
     },
     {
       id: 'switch-client',
-      label: 'Switch Persona: Client (ABC Traders)',
+      label: 'Switch Persona: Client User',
       category: 'Personas',
       icon: Users,
       action: async () => {
@@ -106,7 +142,7 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
     },
     {
       id: 'switch-auditor',
-      label: 'Switch Persona: Auditor (Rahul Sharma, CA)',
+      label: 'Switch Persona: Auditor',
       category: 'Personas',
       icon: Users,
       action: async () => {
@@ -118,74 +154,104 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
         window.location.href = '/auditor/dashboard';
       },
     },
+    {
+      id: 'switch-partner',
+      label: 'Switch Persona: Partner',
+      category: 'Personas',
+      icon: Users,
+      action: async () => {
+        await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'partner@demo.com' }),
+        });
+        window.location.href = '/partner/dashboard';
+      },
+    },
+    {
+      id: 'switch-admin',
+      label: 'Switch Persona: Admin',
+      category: 'Personas',
+      icon: Users,
+      action: async () => {
+        await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'admin@demo.com' }),
+        });
+        window.location.href = '/admin/dashboard';
+      },
+    },
+    {
+      id: 'logout',
+      label: 'Sign Out of TRACERA',
+      category: 'Session',
+      icon: LogOut,
+      action: async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+      },
+    },
   ];
 
-  // Dynamic document results
-  const documentResults = documents
-    .filter(
-      (d) =>
-        d.title.toLowerCase().includes(query.toLowerCase()) ||
-        (d.file_name || '').toLowerCase().includes(query.toLowerCase())
-    )
-    .slice(0, 5)
-    .map((doc) => ({
-      id: `doc-${doc.id}`,
-      label: `${doc.title} (v${doc.current_version})`,
-      category: 'Documents',
-      icon: FileText,
-      detail: doc.status,
-      action: () => router.push(`/client/documents/${doc.id}`),
-    }));
+  // Document items
+  const docActions: CommandItem[] = documents.map((doc) => ({
+    id: `doc-${doc.id}`,
+    label: doc.title,
+    category: 'Documents',
+    detail: `${doc.document_type.replace(/_/g, ' ')} · v${doc.current_version} · ${doc.status}`,
+    icon: FileText,
+    action: () => router.push(`/auditor/documents/${doc.id}`),
+  }));
 
-  const filteredActions: CommandItem[] = [
-    ...documentResults,
-    ...staticActions.filter((a) =>
-      a.label.toLowerCase().includes(query.toLowerCase()) ||
-      a.category.toLowerCase().includes(query.toLowerCase())
-    ),
-  ];
+  const allItems = [...staticActions, ...docActions];
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+  const filteredItems = allItems.filter((item) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return (
+      item.label.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      (item.detail && item.detail.toLowerCase().includes(q))
+    );
+  });
 
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % Math.max(1, filteredActions.length));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredActions.length) % Math.max(1, filteredActions.length));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (filteredActions[selectedIndex]) {
-          filteredActions[selectedIndex].action();
-          onClose();
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) =>
+        prev > 0 ? prev - 1 : filteredItems.length - 1
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredItems[selectedIndex]) {
+        filteredItems[selectedIndex].action();
         onClose();
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, filteredActions, selectedIndex, onClose]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/40 backdrop-blur-2xs font-mono"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-[#0A0A0A]/70 backdrop-blur-xs"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-white border border-[#111110] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+        className="w-full max-w-2xl neo-box-lg bg-white overflow-hidden shadow-[8px_8px_0_#0A0A0A]"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
-        {/* Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E5E5E0] bg-[#FAFAF8]">
-          <Search className="w-4 h-4 text-[#777770] shrink-0" />
+        {/* Input Header */}
+        <div className="flex items-center px-4 py-3.5 border-b-2 border-[#0A0A0A] bg-[#F7F5EF]">
+          <Search className="w-5 h-5 text-[#E73520] mr-3 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -194,29 +260,27 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            placeholder="Search documents, commands, or switch personas..."
-            className="w-full bg-transparent text-xs text-[#111110] placeholder-[#888880] focus:outline-none"
+            placeholder="Type a command or search documents, clients, templates..."
+            className="w-full bg-transparent text-sm text-[#0A0A0A] font-bold focus:outline-none placeholder:text-[#888880]"
           />
           <button
             onClick={onClose}
-            className="text-[10px] uppercase tracking-wider text-[#777770] hover:text-[#111110] px-1.5 py-0.5 border border-[#E5E5E0] bg-white cursor-pointer"
+            className="p-1 border border-[#0A0A0A] bg-white text-[#0A0A0A] hover:bg-[#E73520] hover:text-white transition-colors cursor-pointer"
           >
-            ESC
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Action / Result List */}
-        <div className="max-h-80 overflow-y-auto divide-y divide-[#F2F2EE] text-xs">
-          {filteredActions.length === 0 ? (
-            <div className="p-8 text-center text-[#777770]">
-              <span className="text-xs uppercase font-bold block text-[#111110]">NO MATCHES FOUND</span>
-              <span className="text-[11px] font-sans">Try searching for documents, clients, or navigation actions.</span>
+        {/* Results List */}
+        <div className="max-h-96 overflow-y-auto divide-y divide-[#0A0A0A]/20">
+          {filteredItems.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#777770]">
+              No matching commands or audit records found for "{query}".
             </div>
           ) : (
-            filteredActions.map((item, idx) => {
-              const isSelected = idx === selectedIndex;
+            filteredItems.map((item, idx) => {
               const Icon = item.icon;
-
+              const isSelected = idx === selectedIndex;
               return (
                 <div
                   key={item.id}
@@ -225,48 +289,55 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-center justify-between px-4 py-2.5 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-[#111110] text-white' : 'hover:bg-[#FAFAF8] text-[#111110]'
+                  className={`px-4 py-3 flex items-center justify-between cursor-pointer transition-colors ${
+                    isSelected ? 'bg-[#0A0A0A] text-white' : 'bg-white hover:bg-[#F7F5EF] text-[#0A0A0A]'
                   }`}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-[#777770]'}`} />
-                    <span className="truncate">{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        isSelected ? 'text-[#E73520]' : 'text-[#4A4A48]'
+                      }`}
+                    />
+                    <div>
+                      <div className="text-xs font-bold leading-tight">
+                        {item.label}
+                      </div>
+                      {item.detail && (
+                        <div
+                          className={`text-[10px] mt-0.5 ${
+                            isSelected ? 'text-[#A1A19A]' : 'text-[#777770]'
+                          }`}
+                        >
+                          {item.detail}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {item.detail ? (
-                      <span
-                        className={`text-[9px] uppercase px-1.5 py-0.5 border ${
-                          isSelected
-                            ? 'bg-[#222220] border-[#333330] text-white'
-                            : 'bg-[#F2F2EE] border-[#E5E5E0] text-[#777770]'
-                        }`}
-                      >
-                        {item.detail}
-                      </span>
-                    ) : null}
-                    <span
-                      className={`text-[9px] uppercase tracking-wider ${
-                        isSelected ? 'text-[#999990]' : 'text-[#999990]'
-                      }`}
-                    >
-                      {item.category}
-                    </span>
-                  </div>
+                  <span
+                    className={`text-[9px] uppercase px-1.5 py-0.5 border ${
+                      isSelected
+                        ? 'border-white text-white'
+                        : 'border-[#0A0A0A] text-[#0A0A0A] bg-[#F7F5EF]'
+                    }`}
+                  >
+                    {item.category}
+                  </span>
                 </div>
               );
             })
           )}
         </div>
 
-        {/* Footer shortcuts */}
-        <div className="px-4 py-2 bg-[#FAFAF8] border-t border-[#E5E5E0] flex items-center justify-between text-[10px] text-[#777770]">
+        {/* Keyboard Helper Footer */}
+        <div className="px-4 py-2 border-t-2 border-[#0A0A0A] bg-[#F7F5EF] text-[10px] text-[#4A4A48] flex items-center justify-between font-bold">
           <div className="flex items-center gap-3">
-            <span>↑↓ to navigate</span>
-            <span>↵ to select</span>
+            <span>↑↓ Navigate</span>
+            <span>↵ Select</span>
+            <span>ESC Close</span>
           </div>
-          <span className="font-bold text-[#111110]">TRACERA COMMAND</span>
+          <span className="text-[#E73520]">TRACERA QUICK ACTION ENGINE</span>
         </div>
       </div>
     </div>

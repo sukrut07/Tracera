@@ -21,9 +21,9 @@ export function Logo({
   };
 
   const textSizes = {
-    sm: 'text-xs tracking-[0.14em]',
-    md: 'text-sm tracking-[0.15em]',
-    lg: 'text-base tracking-[0.18em]',
+    sm: 'text-xs tracking-wider',
+    md: 'text-sm tracking-wider',
+    lg: 'text-base tracking-wider',
   };
 
   const content = (
@@ -52,7 +52,7 @@ export function Logo({
       </div>
 
       {showWordmark && (
-        <span className={`font-black text-[#111110] uppercase font-mono ${textSizes[size]}`}>
+        <span className={`font-bold text-[#111110] uppercase ${textSizes[size]}`}>
           TRACERA
         </span>
       )}

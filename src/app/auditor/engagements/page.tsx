@@ -138,20 +138,20 @@ export default function AuditorEngagementsPage() {
   return (
     <AppShell>
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#111110] text-white px-5 py-3 rounded-lg shadow-xl font-mono text-xs border border-[#333330]">
+              <div className="fixed bottom-6 right-6 z-50 bg-[#0A0A0A] text-white px-5 py-3 shadow-[4px_4px_0px_#E73520] text-xs font-bold border-2 border-[#0A0A0A]">
           {toastMessage}
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-8 py-8 w-full space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="border-b border-[#E5E5E0] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="border-b-2 border-[#0A0A0A] pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="font-mono text-xs text-[#777770] uppercase mb-1">PRACTICE MANAGEMENT</div>
-            <h1 className="text-2xl font-serif font-bold text-[#111110]">
-              CA Audit Engagements & Workspaces
+            <p className="text-[10px] font-bold text-[#E73520] uppercase tracking-widest mb-1">Practice management</p>
+            <h1 className="text-3xl font-bold tracking-tight text-[#0A0A0A]">
+              Audit engagements
             </h1>
-            <p className="text-xs font-mono text-[#777770] mt-1">
+            <p className="text-xs text-[#666660] mt-1">
               Client audits, statutory progress gates, maker-checker sign-offs, and fee settlements.
             </p>
           </div>
@@ -371,7 +371,7 @@ export default function AuditorEngagementsPage() {
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="E.g. ABC Traders Pvt Ltd · FY 2025–26 Statutory Audit"
+                  placeholder="E.g. Statutory Audit · FY 2025–26"
                   className="w-full border border-[#E5E5E0] rounded p-2 text-[#111110]"
                   required
                 />

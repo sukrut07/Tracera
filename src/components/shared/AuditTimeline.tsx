@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AuditLog } from '@/types';
 import {
   UploadCloud,
@@ -11,6 +11,8 @@ import {
   User,
   Shield,
   FileText,
+  Download,
+  Filter,
 } from 'lucide-react';
 
 interface AuditTimelineProps {
@@ -18,12 +20,14 @@ interface AuditTimelineProps {
 }
 
 export function AuditTimeline({ logs }: AuditTimelineProps) {
+  const [filterAction, setFilterAction] = useState<string>('ALL');
+
   if (!logs || logs.length === 0) {
     return (
-      <div className="text-center py-10 border border-dashed border-zinc-200 rounded-xl bg-zinc-50/50">
-        <Shield className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
-        <p className="text-sm font-semibold text-zinc-700">No audit events recorded yet</p>
-        <p className="text-xs text-zinc-400 mt-1 font-mono">Audit logs will appear as workflow actions occur</p>
+      <div className="text-center py-10 border-2 border-dashed border-[#0A0A0A] bg-white p-6 neo-box">
+        <Shield className="w-8 h-8 text-[#0A0A0A] mx-auto mb-2" />
+        <p className="text-xs font-black uppercase text-[#0A0A0A]">No audit events recorded yet</p>
+        <p className="text-[11px] text-[#555555] mt-1 font-mono">Audit logs will appear as workflow actions occur</p>
       </div>
     );
   }
@@ -34,7 +38,7 @@ export function AuditTimeline({ logs }: AuditTimelineProps) {
       const date = new Date(isoString);
       return {
         dateStr: date.toLocaleDateString('en-IN', {
-          day: 'numeric',
+          day: '2-digit',
           month: 'short',
           year: 'numeric',
         }),
@@ -53,213 +57,254 @@ export function AuditTimeline({ logs }: AuditTimelineProps) {
     switch (action) {
       case 'DOCUMENT_UPLOADED':
         return {
-          title: 'Document Uploaded',
+          title: 'DOCUMENT UPLOADED',
           icon: UploadCloud,
-          bgColor: 'bg-zinc-100',
-          borderColor: 'border-zinc-300',
-          textColor: 'text-zinc-900',
-          badgeText: 'Initial Submission',
+          badgeText: 'INITIAL SUBMISSION',
+          tagBg: 'bg-[#5CC8FF]/20 text-[#0A0A0A]',
         };
       case 'DOCUMENT_ASSIGNED':
         return {
-          title: 'Document Assigned',
+          title: 'AUDITOR ASSIGNED',
           icon: UserCheck,
-          bgColor: 'bg-zinc-100',
-          borderColor: 'border-zinc-200',
-          textColor: 'text-zinc-800',
-          badgeText: 'Assignment',
+          badgeText: 'ASSIGNMENT',
+          tagBg: 'bg-[#F7F5EF] text-[#0A0A0A]',
         };
       case 'REVIEW_STARTED':
         return {
-          title: 'Review Started',
+          title: 'REVIEW COMMENCED',
           icon: Eye,
-          bgColor: 'bg-amber-50',
-          borderColor: 'border-amber-200',
-          textColor: 'text-amber-800',
-          badgeText: 'Audit Review',
+          badgeText: 'AUDIT EXAMINATION',
+          tagBg: 'bg-[#FFD23F]/30 text-[#0A0A0A]',
         };
       case 'CORRECTION_REQUESTED':
         return {
-          title: 'Correction Requested',
+          title: 'CORRECTION REQUIRED',
           icon: AlertTriangle,
-          bgColor: 'bg-rose-50',
-          borderColor: 'border-rose-200',
-          textColor: 'text-rose-800',
-          badgeText: 'Action Required',
+          badgeText: 'ACTION REQUIRED',
+          tagBg: 'bg-[#FFF2F0] text-[#E73520] font-black',
         };
       case 'CORRECTION_UPLOADED':
         return {
-          title: 'Correction Uploaded',
+          title: 'CORRECTION SUBMITTED',
           icon: FileCheck,
-          bgColor: 'bg-zinc-100',
-          borderColor: 'border-zinc-300',
-          textColor: 'text-zinc-900',
-          badgeText: 'New Version',
+          badgeText: 'NEW VERSION (V2+)',
+          tagBg: 'bg-[#5CC8FF]/30 text-[#0A0A0A]',
         };
       case 'DOCUMENT_APPROVED':
         return {
-          title: 'Document Approved',
+          title: 'DOCUMENT APPROVED',
           icon: CheckCircle2,
-          bgColor: 'bg-emerald-50',
-          borderColor: 'border-emerald-300',
-          textColor: 'text-emerald-900',
-          badgeText: 'CA Sign-off',
+          badgeText: 'CA SIGN-OFF',
+          tagBg: 'bg-[#C7F36B]/40 text-[#0A0A0A] font-bold',
+        };
+      case 'DOCUMENT_REQUESTED':
+        return {
+          title: 'DOCUMENT REQUEST DISPATCHED',
+          icon: FileText,
+          badgeText: 'MULTI-CHANNEL REQUEST',
+          tagBg: 'bg-[#5CC8FF]/20 text-[#0A0A0A]',
+        };
+      case 'ISSUE_RECORDED':
+        return {
+          title: 'AUDIT BLOCKER / ISSUE',
+          icon: AlertTriangle,
+          badgeText: 'BLOCKER',
+          tagBg: 'bg-[#E73520] text-white font-bold',
         };
       default:
         return {
-          title: action,
+          title: action.replace(/_/g, ' '),
           icon: FileText,
-          bgColor: 'bg-zinc-100',
-          borderColor: 'border-zinc-200',
-          textColor: 'text-zinc-800',
-          badgeText: 'Event',
+          badgeText: 'SYSTEM AUDIT RECORD',
+          tagBg: 'bg-[#F7F5EF] text-[#0A0A0A]',
         };
     }
   };
 
+  const filteredLogs = logs.filter((log) => {
+    if (filterAction === 'ALL') return true;
+    return log.action === filterAction;
+  });
+
+  const exportTimelineCSV = () => {
+    const headers = ['Action,Actor,Role,Timestamp,Metadata'];
+    const rows = filteredLogs.map((l) => {
+      const meta = JSON.stringify(l.metadata || {}).replace(/"/g, '""');
+      return `"${l.action}","${l.actor_name || ''}","${l.actor_role || ''}","${l.created_at}","${meta}"`;
+    });
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `tracera_audit_timeline_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="relative pl-6 space-y-6 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-px before:bg-zinc-200 font-sans">
-      {logs.map((log, index) => {
-        const config = getActionConfig(log.action);
-        const Icon = config.icon;
-        const { dateStr, timeStr } = formatDate(log.created_at);
-        const isLast = index === logs.length - 1;
+    <div className="space-y-4 font-mono">
+      {/* Controls: Export & Count */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b-2 border-[#0A0A0A]">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase text-[#0A0A0A]">
+            IMMUTABLE AUDIT TRAIL ({filteredLogs.length})
+          </span>
+        </div>
 
-        return (
-          <div key={log.id} className="relative group">
-            {/* Timeline node icon */}
-            <div
-              className={`absolute -left-6 top-1.5 w-6 h-6 rounded-full border flex items-center justify-center shadow-2xs transition-transform group-hover:scale-110 ${config.bgColor} ${config.borderColor} ${config.textColor}`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-            </div>
+        <button
+          onClick={exportTimelineCSV}
+          className="px-2.5 py-1 text-xs font-bold border-2 border-[#0A0A0A] bg-white hover:bg-[#F7F5EF] text-[#0A0A0A] flex items-center gap-1.5 cursor-pointer shadow-[2px_2px_0_#0A0A0A]"
+          title="Export Audit Trail to CSV"
+        >
+          <Download className="w-3.5 h-3.5 text-[#E73520]" />
+          <span>EXPORT TIMELINE CSV</span>
+        </button>
+      </div>
 
-            {/* Event Card */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-2xs hover:border-zinc-300 transition-colors">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className={`font-bold text-sm ${config.textColor}`}>
-                    {config.title}
-                  </span>
-                  {log.metadata.version && (
-                    <span className="text-[11px] font-mono font-semibold bg-zinc-100 text-zinc-800 px-2 py-0.5 rounded border border-zinc-200">
-                      v{log.metadata.version}
-                    </span>
-                  )}
-                </div>
+      <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#0A0A0A]">
+        {filteredLogs.map((log, index) => {
+          const config = getActionConfig(log.action);
+          const Icon = config.icon;
+          const { dateStr, timeStr } = formatDate(log.created_at);
+          const isLatest = index === 0;
 
-                <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-mono text-[11px]">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>{dateStr}</span>
-                  <span className="text-zinc-300">•</span>
-                  <span>{timeStr}</span>
-                </div>
+          return (
+            <div key={log.id} className="relative group">
+              {/* Timeline node marker */}
+              <div
+                className={`absolute -left-6 top-2 w-5 h-5 border-2 border-[#0A0A0A] bg-white flex items-center justify-center shadow-[1px_1px_0_#0A0A0A] ${
+                  isLatest ? 'bg-[#E73520] text-white' : 'text-[#0A0A0A]'
+                }`}
+              >
+                <div className={`w-2 h-2 ${isLatest ? 'bg-white' : 'bg-[#0A0A0A]'}`} />
               </div>
 
-              {/* Event specific details */}
-              {log.action === 'DOCUMENT_UPLOADED' && (
-                <div className="text-xs text-zinc-600 space-y-1">
-                  <p>
-                    Uploaded file:{' '}
-                    <span className="font-semibold text-zinc-900">
-                      {log.metadata.file_name || 'document'}
+              {/* Event Card */}
+              <div className="bg-white border-2 border-[#0A0A0A] p-4 shadow-[3px_3px_0_#0A0A0A] space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 border border-[#0A0A0A] ${config.tagBg}`}>
+                      {config.badgeText}
                     </span>
-                  </p>
-                  {Boolean(log.metadata.notes) && (
-                    <p className="italic text-zinc-600 bg-zinc-50 p-2 rounded border border-zinc-100 text-[11px]">
-                      &ldquo;{String(log.metadata.notes)}&rdquo;
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {log.action === 'DOCUMENT_ASSIGNED' && (
-                <div className="text-xs text-zinc-600">
-                  Assigned to auditor:{' '}
-                  <span className="font-semibold text-zinc-900">
-                    {String(log.metadata.assigned_to_name || 'Rahul Sharma')}
-                  </span>
-                </div>
-              )}
-
-              {log.action === 'REVIEW_STARTED' && (
-                <div className="text-xs text-zinc-600">
-                  Reviewer:{' '}
-                  <span className="font-semibold text-zinc-900">
-                    {log.actor_name || 'Auditor'}
-                  </span>
-                </div>
-              )}
-
-              {log.action === 'CORRECTION_REQUESTED' && (
-                <div className="mt-1 space-y-1.5">
-                  <div className="text-xs font-semibold text-rose-800 flex items-center gap-1.5">
-                    <span>Reason for Correction:</span>
-                    {Boolean(log.metadata.priority) && (
-                      <span className="text-[10px] font-mono uppercase font-bold tracking-wider px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded">
-                        {String(log.metadata.priority)} Priority
+                    <span className="font-bold text-xs text-[#0A0A0A]">
+                      {config.title}
+                    </span>
+                    {log.metadata.version && (
+                      <span className="text-[10px] font-black bg-[#0A0A0A] text-white px-1.5 py-0.5">
+                        v{log.metadata.version}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-rose-950 bg-rose-50/70 border border-rose-200/80 p-2.5 rounded-lg leading-relaxed font-medium font-sans">
-                    &ldquo;{String(log.metadata.reason)}&rdquo;
-                  </p>
-                </div>
-              )}
 
-              {log.action === 'CORRECTION_UPLOADED' && (
-                <div className="text-xs text-zinc-600 space-y-1">
-                  <p>
-                    Uploaded corrected file:{' '}
-                    <span className="font-semibold text-zinc-900">
-                      {String(log.metadata.file_name || 'corrected document')}
-                    </span>{' '}
-                    (Version {log.metadata.version})
-                  </p>
-                  {Boolean(log.metadata.notes) && (
-                    <p className="italic text-zinc-600 bg-zinc-50 p-2 rounded border border-zinc-100 text-[11px]">
-                      &ldquo;{String(log.metadata.notes)}&rdquo;
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {log.action === 'DOCUMENT_APPROVED' && (
-                <div className="mt-1 space-y-1">
-                  <div className="text-xs text-emerald-800 flex items-center gap-1 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Verified and signed off for statutory audit filing</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-[#555555] font-bold">
+                    <Calendar className="w-3 h-3 text-[#E73520]" />
+                    <span>{dateStr}</span>
+                    <span>&bull;</span>
+                    <span>{timeStr}</span>
                   </div>
-                  {log.metadata.comment && (
-                    <p className="text-xs text-emerald-950 bg-emerald-50/70 border border-emerald-200/70 p-2 rounded-lg font-medium font-sans">
-                      Auditor comment: &ldquo;{String(log.metadata.comment)}&rdquo;
+                </div>
+
+                {/* Event specific details */}
+                {log.action === 'DOCUMENT_UPLOADED' && (
+                  <div className="text-xs text-[#111111] space-y-1">
+                    <p>
+                      File:{' '}
+                      <span className="font-bold text-[#0A0A0A]">
+                        {log.metadata.file_name || 'document'}
+                      </span>
                     </p>
+                    {Boolean(log.metadata.notes) && (
+                      <p className="p-2 bg-[#F7F5EF] border border-[#0A0A0A] text-[11px] text-[#111111]">
+                        &ldquo;{String(log.metadata.notes)}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {log.action === 'DOCUMENT_ASSIGNED' && (
+                  <div className="text-xs text-[#111111]">
+                    Assigned to auditor:{' '}
+                    <span className="font-bold text-[#0A0A0A]">
+                      {String(log.metadata.assigned_to_name || 'Rahul Sharma')}
+                    </span>
+                  </div>
+                )}
+
+                {log.action === 'REVIEW_STARTED' && (
+                  <div className="text-xs text-[#111111]">
+                    Reviewer:{' '}
+                    <span className="font-bold text-[#0A0A0A]">
+                      {log.actor_name || 'Auditor'}
+                    </span>
+                  </div>
+                )}
+
+                {log.action === 'CORRECTION_REQUESTED' && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-black text-[#E73520]">
+                      REASON FOR CORRECTION:
+                    </div>
+                    <p className="text-xs text-[#0A0A0A] bg-[#FFF2F0] border-2 border-[#E73520] p-2.5 font-bold leading-relaxed">
+                      &ldquo;{String(log.metadata.reason)}&rdquo;
+                    </p>
+                  </div>
+                )}
+
+                {log.action === 'CORRECTION_UPLOADED' && (
+                  <div className="text-xs text-[#111111] space-y-1">
+                    <p>
+                      Corrected file:{' '}
+                      <span className="font-bold text-[#0A0A0A]">
+                        {String(log.metadata.file_name || 'corrected document')}
+                      </span>{' '}
+                      (Version {log.metadata.version})
+                    </p>
+                    {Boolean(log.metadata.notes) && (
+                      <p className="p-2 bg-[#F7F5EF] border border-[#0A0A0A] text-[11px] text-[#111111]">
+                        &ldquo;{String(log.metadata.notes)}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {log.action === 'DOCUMENT_APPROVED' && (
+                  <div className="space-y-1">
+                    <div className="text-xs text-emerald-800 flex items-center gap-1 font-black">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Verified and signed off for statutory audit filing</span>
+                    </div>
+                    {log.metadata.comment && (
+                      <p className="text-xs text-[#0A0A0A] bg-[#C7F36B]/20 border border-[#0A0A0A] p-2 font-bold">
+                        Auditor comment: &ldquo;{String(log.metadata.comment)}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actor & Role footer */}
+                <div className="pt-2 border-t border-[#0A0A0A]/20 flex items-center justify-between text-[10px] text-[#555555]">
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3 h-3 text-[#0A0A0A]" />
+                    <span className="font-bold text-[#0A0A0A]">
+                      {log.actor_name || 'System User'}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="uppercase font-bold text-[#E73520]">
+                      {log.actor_role || 'USER'}
+                    </span>
+                  </div>
+                  {isLatest && (
+                    <span className="text-[9px] font-black uppercase text-[#E73520] px-1.5 py-0.5 border border-[#E73520]">
+                      LATEST EVENT
+                    </span>
                   )}
                 </div>
-              )}
-
-              {/* Actor & Role footer */}
-              <div className="mt-3 pt-2.5 border-t border-zinc-100 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                <div className="flex items-center gap-1.5">
-                  <User className="w-3 h-3 text-zinc-400" />
-                  <span className="font-medium text-zinc-700">
-                    {log.actor_name || 'System User'}
-                  </span>
-                  <span className="text-zinc-300">•</span>
-                  <span className="uppercase text-[10px] font-bold tracking-wider text-zinc-500">
-                    {log.actor_role || 'USER'}
-                  </span>
-                </div>
-                {isLast && (
-                  <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    Latest Event
-                  </span>
-                )}
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

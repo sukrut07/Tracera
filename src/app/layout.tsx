@@ -1,20 +1,19 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import type { Metadata } from 'next';
+import './globals.css';
+import { TraceCursor } from '@/components/cursor/TraceCursor';
 
 export const metadata: Metadata = {
-  title: "TRACERA — Audit Workflow, Clearly Traced",
-  description: "Connected audit document lifecycle, review, versioning, and compliance tracking for Chartered Accountant firms",
+  title: 'TRACERA — Audit Workflow, Clearly Traced',
+  description:
+    'A traceable CA engagement workflow platform: Client → Document → Review → Correction → Approval → Audit Trail → Closure.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -23,11 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#FAFAF8] text-[#111110] selection:bg-[#111110] selection:text-white">
+    <html lang="en" className="h-full">
+      <body className="min-h-full flex flex-col bg-[#F7F5EF] text-[#0A0A0A] selection:bg-[#E73520] selection:text-white font-sans antialiased">
+        {/* Custom Desktop Trace Cursor */}
+        <TraceCursor />
         {children}
       </body>
     </html>

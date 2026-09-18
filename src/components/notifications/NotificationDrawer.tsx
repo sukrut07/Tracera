@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   FileText,
   Clock,
-  ArrowUpRight,
+  ArrowRight,
   CheckCheck,
 } from 'lucide-react';
 import { Notification } from '@/types';
@@ -62,17 +62,20 @@ export function NotificationDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-2xs font-mono">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-[#0A0A0A]/60 backdrop-blur-xs font-mono"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md bg-white border-l border-[#E5E5E0] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-150"
+        className="w-full max-w-md bg-white border-l-[3px] border-[#0A0A0A] h-full flex flex-col shadow-[8px_0_0_#0A0A0A]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-5 border-b border-[#E5E5E0] flex items-center justify-between bg-[#FAFAF8]">
+        <div className="p-5 border-b-2 border-[#0A0A0A] flex items-center justify-between bg-[#F7F5EF]">
           <div className="flex items-center gap-2.5">
-            <span className="w-2 h-2 bg-[#E03E1A]" />
-            <h3 className="text-xs uppercase tracking-widest font-bold text-[#111110]">
-              AUDIT NOTIFICATIONS ({notifications.filter((n) => !n.is_read).length} UNREAD)
+            <span className="w-2.5 h-2.5 bg-[#E73520] border border-[#0A0A0A] animate-pulse" />
+            <h3 className="text-xs uppercase tracking-widest font-black text-[#0A0A0A]">
+              NOTIFICATIONS ({notifications.filter((n) => !n.is_read).length} UNREAD)
             </h3>
           </div>
 
@@ -80,15 +83,15 @@ export function NotificationDrawer({
             <button
               onClick={markAllRead}
               title="Mark all notifications as read"
-              className="text-[10px] uppercase text-[#777770] hover:text-[#111110] transition-colors cursor-pointer flex items-center gap-1"
+              className="text-[10px] uppercase text-[#4A4A48] hover:text-[#0A0A0A] font-bold flex items-center gap-1 cursor-pointer"
             >
-              <CheckCheck className="w-3 h-3" />
-              <span>Mark Read</span>
+              <CheckCheck className="w-3.5 h-3.5 text-[#E73520]" />
+              <span>Mark All Read</span>
             </button>
 
             <button
               onClick={onClose}
-              className="text-[#777770] hover:text-[#111110] p-1 transition-colors"
+              className="p-1 border border-[#0A0A0A] bg-white text-[#0A0A0A] hover:bg-[#E73520] hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -96,65 +99,68 @@ export function NotificationDrawer({
         </div>
 
         {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#E5E5E0] text-xs">
+        <div className="flex-1 overflow-y-auto divide-y-2 divide-[#0A0A0A] text-xs">
           {loading && notifications.length === 0 ? (
-            <div className="p-8 text-center text-[#777770] space-y-2">
-              <div className="w-4 h-4 border-2 border-[#111110] border-t-transparent animate-spin mx-auto" />
-              <span>Loading notifications...</span>
+            <div className="p-12 text-center text-[#777770]">
+              Checking for new audit notices...
             </div>
           ) : notifications.length === 0 ? (
-            <div className="p-12 text-center text-[#777770] space-y-2">
-              <span className="font-bold text-[#111110] uppercase block">
-                ALL CAUGHT UP
-              </span>
-              <p className="font-sans text-xs text-[#777770]">
-                No pending statutory notices or review alerts.
-              </p>
+            <div className="p-12 text-center text-[#777770] space-y-1">
+              <span className="block font-bold text-[#0A0A0A]">ALL CAUGHT UP</span>
+              <span>No unread notifications at this time.</span>
             </div>
           ) : (
             notifications.map((n) => {
-              const isCorrection = n.type.includes('CORRECTION');
-              const isApproval = n.type.includes('APPROVED');
+              const isCorrection = n.type === 'CORRECTION_REQUIRED';
+              const isApproval = n.type === 'DOCUMENT_APPROVED';
 
               return (
                 <div
                   key={n.id}
-                  className={`p-4 transition-colors space-y-2 ${
-                    !n.is_read ? 'bg-[#FFFDFB]' : 'hover:bg-[#FAFAF8]'
+                  className={`p-4 transition-colors ${
+                    !n.is_read ? 'bg-[#FFF2F0]' : 'bg-white hover:bg-[#F7F5EF]'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] text-[#777770]">
-                    <span
-                      className={`font-bold uppercase tracking-wider px-1.5 py-0.5 border ${
-                        isCorrection
-                          ? 'text-[#C2410C] bg-orange-50 border-orange-200'
-                          : isApproval
-                          ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
-                          : 'text-[#111110] bg-[#F2F2EE] border-[#E5E5E0]'
-                      }`}
-                    >
-                      {n.type.replace(/_/g, ' ')}
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[9px] font-black px-1.5 py-0.5 border border-[#0A0A0A] ${
+                          isCorrection
+                            ? 'bg-[#E73520] text-white'
+                            : isApproval
+                            ? 'bg-[#C7F36B] text-[#0A0A0A]'
+                            : 'bg-[#5CC8FF] text-[#0A0A0A]'
+                        }`}
+                      >
+                        {n.type.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] text-[#777770]">
+                      {new Date(n.created_at).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
-                    <span>{new Date(n.created_at).toLocaleDateString('en-GB')}</span>
                   </div>
 
-                  <h4 className="font-bold text-xs text-[#111110] font-sans">
+                  <h4 className="font-bold text-[#0A0A0A] text-xs mt-1">
                     {n.title}
                   </h4>
 
-                  <p className="text-xs text-[#555550] font-sans leading-relaxed">
+                  <p className="text-[11px] text-[#4A4A48] mt-1 leading-snug">
                     {n.message}
                   </p>
 
-                  {n.link_url && (
-                    <div className="pt-1">
+                  {n.document_id && (
+                    <div className="mt-2 text-right">
                       <Link
-                        href={n.link_url}
+                        href={`/documents/${n.document_id}`}
                         onClick={onClose}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#111110] hover:text-[#E03E1A]"
+                        className="inline-flex items-center gap-1 text-[10px] font-black text-[#E73520] hover:text-[#0A0A0A] underline uppercase tracking-wider"
                       >
-                        <span>Open Document Record</span>
-                        <ArrowUpRight className="w-3 h-3" />
+                        <span>VIEW DOCUMENT</span>
+                        <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
                   )}
@@ -165,8 +171,9 @@ export function NotificationDrawer({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[#E5E5E0] bg-[#FAFAF8] text-center text-[10px] text-[#777770]">
-          <span>Real-time in-app statutory event stream</span>
+        <div className="p-3 border-t-2 border-[#0A0A0A] bg-[#F7F5EF] text-[10px] text-[#777770] flex items-center justify-between font-bold">
+          <span>REAL-TIME AUDIT DISPATCH</span>
+          <span className="text-[#0A0A0A]">TRACERA ENGINE</span>
         </div>
       </div>
     </div>

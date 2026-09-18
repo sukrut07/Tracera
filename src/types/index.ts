@@ -1,4 +1,4 @@
-export type Role = 'CLIENT' | 'AUDITOR' | 'ADMIN';
+export type Role = 'CLIENT' | 'AUDITOR' | 'ADMIN' | 'PARTNER';
 
 export type DocumentType =
   | 'BANK_STATEMENT'
@@ -20,7 +20,16 @@ export type AuditAction =
   | 'REVIEW_STARTED'
   | 'CORRECTION_REQUESTED'
   | 'CORRECTION_UPLOADED'
-  | 'DOCUMENT_APPROVED';
+  | 'DOCUMENT_APPROVED'
+  | 'STAGE_CHANGED'
+  | 'TASK_CREATED'
+  | 'TASK_COMPLETED'
+  | 'ISSUE_CREATED'
+  | 'ISSUE_RESOLVED'
+  | 'PAYMENT_RECORDED'
+  | 'ENGAGEMENT_CREATED'
+  | 'ENGAGEMENT_CLOSED'
+  | 'APPROVAL_SUBMITTED';
 
 export interface UserProfile {
   id: string;
@@ -28,6 +37,9 @@ export interface UserProfile {
   email: string;
   role: Role;
   client_id: string | null;
+  organization?: string | null;
+  phone?: string | null;
+  firebase_uid?: string | null;
   created_at: string;
 }
 
@@ -36,7 +48,16 @@ export interface Client {
   name: string;
   email: string;
   company_name: string;
+  legal_name?: string | null;
+  contact_person?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
   financial_year: string;
+  phone?: string | null;
+  address?: string | null;
+  industry?: string | null;
+  assigned_auditor?: string | null;
+  status?: 'ACTIVE' | 'INACTIVE';
   created_at: string;
   updated_at: string;
 }
@@ -260,4 +281,54 @@ export interface Engagement {
   approvals?: EngagementApproval[];
   documents?: AuditDocument[];
   audit_logs?: AuditLog[];
+  issues?: EngagementIssue[];
+  billing_records?: BillingRecord[];
+  document_requests?: DocumentRequest[];
 }
+
+export interface EngagementIssue {
+  id: string;
+  engagement_id: string;
+  title: string;
+  description?: string;
+  owner_id?: string | null;
+  owner_name?: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  blocked_by_client: boolean | number;
+  due_date?: string;
+  resolved_at?: string | null;
+  created_at: string;
+}
+
+export interface BillingRecord {
+  id: string;
+  engagement_id: string;
+  invoice_number?: string;
+  fee: number;
+  gst: number;
+  total: number;
+  status: 'DRAFT' | 'ISSUED' | 'PAYMENT_PENDING' | 'PAID';
+  payment_method?: string;
+  payment_reference?: string;
+  recorded_by_id?: string | null;
+  recorded_by_name?: string;
+  recorded_at?: string;
+  created_at: string;
+}
+
+export interface DocumentRequest {
+  id: string;
+  engagement_id?: string;
+  document_type: string;
+  description?: string;
+  requested_by_id: string;
+  requested_by_name?: string;
+  requested_from_id?: string;
+  channels: string[];
+  status: 'REQUESTED' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED';
+  due_date?: string;
+  fulfilled_document_id?: string | null;
+  created_at: string;
+}
+
