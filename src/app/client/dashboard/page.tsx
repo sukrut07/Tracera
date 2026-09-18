@@ -41,19 +41,20 @@ export default function ClientDashboardPage() {
         fetch('/api/documents'),
         fetch('/api/engagements'),
       ]);
-      if (resDocs.status === 401 || resEngs.status === 401 || resDocs.status === 403 || resEngs.status === 403) {
+      if (resDocs.status === 401) {
         window.location.href = '/login';
         return;
       }
-      const dataDocs = await resDocs.json();
-      const dataEngs = await resEngs.json();
 
       if (resDocs.ok) {
+        const dataDocs = await resDocs.json();
         setDocuments(dataDocs.documents || []);
         setStats(dataDocs.stats || null);
         setCurrentUser(dataDocs.currentUser || null);
       }
+
       if (resEngs.ok) {
+        const dataEngs = await resEngs.json();
         setActiveEngagements(dataEngs.engagements || []);
       }
     } catch (err) {

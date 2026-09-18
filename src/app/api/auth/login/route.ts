@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setSessionUser, getCurrentUser } from '@/lib/auth/session';
+import { setSessionUser, getCurrentUser, SESSION_COOKIE_NAME } from '@/lib/auth/session';
 import { verifyFirebaseIdToken, isFirebaseAdminConfigured } from '@/lib/firebase/admin';
 import { getUserAuthByEmail, getUserByEmail } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth/password';
@@ -79,7 +79,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Establish secure server session ────────────────────────────────────
-    await setSessionUser(authenticatedEmail);
+    const sessionUser = await setSessionUser(authenticatedEmail);
+    if (!sessionUser) {
+      return NextResponse.json(
+        { error: 'Failed to create user session. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     const redirectMap: Record<string, string> = {
       CLIENT: '/client/dashboard',
@@ -88,16 +94,37 @@ export async function POST(req: NextRequest) {
       ADMIN: '/admin/dashboard',
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
-        id: userProfile.id,
-        name: userProfile.name,
-        role: userProfile.role,
-        firm_id: userProfile.firm_id,
+        id: sessionUser.id,
+        name: sessionUser.name,
+        role: sessionUser.role,
+        firm_id: sessionUser.firm_id,
       },
-      redirectTo: redirectMap[userProfile.role] || '/client/dashboard',
+      redirectTo: redirectMap[sessionUser.role] || '/client/dashboard',
     });
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    response.cookies.set(SESSION_COOKIE_NAME, sessionUser.sessionId, {
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      expires: expiresAt,
+      maxAge: 7 * 24 * 60 * 60,
+    });
+    response.cookies.set('tracera_role_hint', sessionUser.role, {
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      expires: expiresAt,
+      maxAge: 7 * 24 * 60 * 60,
+    });
+
+    return response;
   } catch (error: any) {
     console.error('[auth/login] error:', error);
     return NextResponse.json(

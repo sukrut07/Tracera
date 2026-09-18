@@ -40,23 +40,13 @@ export function AppHeader({ currentUser }: AppHeaderProps) {
       setUser(currentUser);
     } else {
       fetch('/api/auth/login')
-        .then((res) => {
-          if (!res.ok) {
-            window.location.href = '/login';
-            return null;
-          }
-          return res.json();
-        })
+        .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.user) {
             setUser(data.user);
-          } else {
-            window.location.href = '/login';
           }
         })
-        .catch(() => {
-          window.location.href = '/login';
-        });
+        .catch(() => {});
     }
   }, [currentUser]);
 

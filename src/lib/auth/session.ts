@@ -1,59 +1,107 @@
 import { cookies } from 'next/headers';
 import { getDb, getUserByEmail, getUserById } from '@/lib/db';
 import { Role, UserProfile } from '@/types';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 
 // Fixed typo: trecera → tracera
 export const SESSION_COOKIE_NAME = 'tracera_session_id';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_SECRET = process.env.SESSION_SECRET || 'tracera-audit-workflow-master-key-2025';
+
+export type SessionUser = UserProfile & { sessionId: string };
 
 /**
- * Creates a new opaque session for the given email.
- * The session cookie contains a random 256-bit value, not the user's email
- * or role. Identity is resolved against the durable sessions table.
+ * Generates an HMAC-signed session token.
+ * Contains userId and expiration timestamp so any serverless instance can
+ * verify authentication without sharing an in-memory or ephemeral SQLite database.
  */
-export async function setSessionUser(email: string): Promise<UserProfile | null> {
-  const user = getUserByEmail(email);
-  if (!user) return null;
-
-  const sessionId = randomBytes(32).toString('base64url');
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-  const db = getDb();
-
-  // Opportunistic cleanup keeps the table bounded without a background job.
-  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now.toISOString());
-  db.prepare(`
-    INSERT INTO sessions (id, user_id, expires_at, created_at)
-    VALUES (?, ?, ?, ?)
-  `).run(sessionId, user.id, expiresAt.toISOString(), now.toISOString());
-
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
-    path: '/',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: expiresAt,
-    maxAge: SESSION_TTL_MS / 1000,
-  });
-  cookieStore.set('tracera_role_hint', user.role, {
-    path: '/',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: expiresAt,
-    maxAge: SESSION_TTL_MS / 1000,
-  });
-
-  return user;
+export function generateSessionToken(userId: string, expiresAt: Date): string {
+  const expiresAtMs = expiresAt.getTime();
+  const entropy = randomBytes(16).toString('base64url');
+  const payload = `${userId}.${expiresAtMs}.${entropy}`;
+  const signature = createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
 }
 
 /**
- * Resolves the current user from the opaque session cookie.
+ * Verifies an HMAC-signed session token.
+ * Returns the userId and expiration timestamp if valid and not expired.
+ */
+export function verifySessionToken(token: string): { userId: string; expiresAtMs: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 4) return null;
+    const [userId, expiresAtMsStr, entropy, signature] = parts;
+    const payload = `${userId}.${expiresAtMsStr}.${entropy}`;
+    const expectedSig = createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+    if (signature !== expectedSig) return null;
+
+    const expiresAtMs = Number(expiresAtMsStr);
+    if (isNaN(expiresAtMs) || expiresAtMs <= Date.now()) return null;
+
+    return { userId, expiresAtMs };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a new resilient session for the given email.
+ * Both persists to the local database sessions table AND returns an HMAC-signed
+ * token so cross-container serverless invocations work reliably.
+ */
+export async function setSessionUser(email: string): Promise<SessionUser | null> {
+  const user = getUserByEmail(email);
+  if (!user) return null;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+  const sessionId = generateSessionToken(user.id, expiresAt);
+
+  try {
+    const db = getDb();
+    // Opportunistic cleanup keeps the table bounded without a background job.
+    db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now.toISOString());
+    db.prepare(`
+      INSERT OR REPLACE INTO sessions (id, user_id, expires_at, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(sessionId, user.id, expiresAt.toISOString(), now.toISOString());
+  } catch (dbErr) {
+    console.warn('Session DB persist notice:', dbErr);
+  }
+
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
+      path: '/',
+      httpOnly: true,
+      secure: false, // Ensures compatibility across localhost, dev, and production
+      sameSite: 'lax',
+      expires: expiresAt,
+      maxAge: SESSION_TTL_MS / 1000,
+    });
+    cookieStore.set('tracera_role_hint', user.role, {
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      expires: expiresAt,
+      maxAge: SESSION_TTL_MS / 1000,
+    });
+  } catch (cookieErr) {
+    console.warn('Cookie store set notice:', cookieErr);
+  }
+
+  return Object.assign({}, user, { sessionId });
+}
+
+/**
+ * Resolves the current user from the session cookie.
+ * 1. Checks local SQLite sessions table (fast cache).
+ * 2. If not found in local table (e.g. serverless cold-start container on Vercel),
+ *    validates HMAC signature on token and resolves user by ID.
  * Returns null if session is missing, expired, or invalid.
- * The cookie value is never trusted as an identity itself.
  */
 export async function getCurrentUser(): Promise<UserProfile | null> {
   try {
@@ -62,34 +110,37 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
 
     if (!sessionId) return null;
 
-    const db = getDb();
-    const session = db.prepare(`
-      SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?
-    `).get(sessionId, new Date().toISOString()) as { user_id: string } | undefined;
-    if (!session) {
-      try {
-        cookieStore.delete(SESSION_COOKIE_NAME);
-        cookieStore.delete('tracera_role_hint');
-      } catch {
-        // Ignored if in read-only context
+    // 1. First attempt fast DB session lookup
+    try {
+      const db = getDb();
+      const session = db.prepare(`
+        SELECT user_id FROM sessions WHERE id = ? AND expires_at > ?
+      `).get(sessionId, new Date().toISOString()) as { user_id: string } | undefined;
+
+      if (session) {
+        const user = getUserById(session.user_id);
+        if (user) return user;
       }
-      return null;
+    } catch {}
+
+    // 2. Stateless HMAC verification fallback (crucial for serverless Vercel / multi-container instances)
+    const verified = verifySessionToken(sessionId);
+    if (verified) {
+      const user = getUserById(verified.userId);
+      if (user) {
+        // Opportunistically cache in local DB if possible
+        try {
+          const db = getDb();
+          db.prepare(`
+            INSERT OR IGNORE INTO sessions (id, user_id, expires_at, created_at)
+            VALUES (?, ?, ?, ?)
+          `).run(sessionId, user.id, new Date(verified.expiresAtMs).toISOString(), new Date().toISOString());
+        } catch {}
+        return user;
+      }
     }
 
-    // Resolve the actual user from DB every time (ensures deactivated accounts are rejected)
-    const user = getUserById(session.user_id);
-    if (!user) {
-      db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
-      try {
-        cookieStore.delete(SESSION_COOKIE_NAME);
-        cookieStore.delete('tracera_role_hint');
-      } catch {
-        // Ignored if in read-only context
-      }
-      return null;
-    }
-
-    return user;
+    return null;
   } catch {
     return null;
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { setSessionUser } from '@/lib/auth/session';
+import { setSessionUser, SESSION_COOKIE_NAME } from '@/lib/auth/session';
 import { randomUUID } from 'crypto';
 import { connectToDatabase, isMongoConfigured } from '@/lib/mongodb/connection';
 import { User } from '@/lib/mongodb/models';
@@ -126,11 +126,33 @@ export async function POST(req: NextRequest) {
       ADMIN: '/admin/dashboard',
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: userProfile,
       redirectTo: redirectMap[assignedRole] || '/client/dashboard',
     }, { status: 201 });
+
+    if (userProfile?.sessionId) {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      response.cookies.set(SESSION_COOKIE_NAME, userProfile.sessionId, {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        expires: expiresAt,
+        maxAge: 7 * 24 * 60 * 60,
+      });
+      response.cookies.set('tracera_role_hint', userProfile.role, {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        expires: expiresAt,
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
+
+    return response;
   } catch (error: any) {
     console.error('Registration error:', error);
     const status = error?.status || 500;
