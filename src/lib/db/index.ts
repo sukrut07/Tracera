@@ -27,8 +27,8 @@ import {
 } from '@/types';
 
 const isVercel = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DB_DIR = isVercel ? path.join('/tmp', '.data') : path.join(process.cwd(), '.data');
-const DB_PATH = path.join(DB_DIR, 'tracera.db');
+const DB_DIR = isVercel ? '/tmp' : path.join(process.cwd(), '.data');
+const DB_PATH = isVercel ? '/tmp/tracera.db' : path.join(DB_DIR, 'tracera.db');
 
 // Ensure DB directory exists
 if (!fs.existsSync(DB_DIR)) {
@@ -54,9 +54,31 @@ let dbInstance: Database.Database | null = null;
 
 export function getDb(): Database.Database {
   if (!dbInstance) {
-    dbInstance = new Database(DB_PATH);
-    dbInstance.pragma('journal_mode = WAL');
-    dbInstance.pragma('foreign_keys = ON');
+    try {
+      dbInstance = new Database(DB_PATH);
+    } catch (openErr) {
+      console.warn('Failed to open primary DB_PATH, attempting fallback:', openErr);
+      try {
+        dbInstance = new Database('/tmp/tracera.db');
+      } catch {
+        dbInstance = new Database(':memory:');
+      }
+    }
+
+    try {
+      if (isVercel) {
+        dbInstance.pragma('journal_mode = MEMORY');
+      } else {
+        dbInstance.pragma('journal_mode = WAL');
+      }
+    } catch (pragmaErr) {
+      console.warn('journal_mode pragma skipped:', pragmaErr);
+    }
+
+    try {
+      dbInstance.pragma('foreign_keys = ON');
+    } catch {}
+
     initSchema(dbInstance);
   }
   return dbInstance;
