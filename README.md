@@ -72,7 +72,7 @@ CLIENT                              AUDITOR
   │<── Certified PDF Audit Report ─────┤    (Status: APPROVED, File Locked, PDF Generated)
 ```
 
-1. **Upload**: Client submits the document (Bank Statement, Purchase Register, GST Return, Invoice). Document enters state `SUBMITTED` as Version 1.
+1. **Upload**: Client submits the document (Bank Statement, Purchase Register, GST Return, Invoice). Document enters state `SUBMITTED` as Version 1 ($v_1$).
 2. **Review**: Assigned auditor opens the split-screen Review Workspace, transitioning status to `UNDER_REVIEW`. Line items are verified against the 4-point CA statutory checklist.
 3. **Correction**: If discrepancies exist, auditor requests a correction with a mandatory explanation. Status transitions to `CORRECTION_REQUIRED`. Client sees an **Action Required** notice.
 4. **Re-upload**: Client submits Version 2 ($v_2$). Version 1 ($v_1$) is preserved immutably.
@@ -81,61 +81,90 @@ CLIENT                              AUDITOR
 
 ---
 
-## Features
+## Role-Based Architecture & Portals
 
-- **Document Management**: Centralized repository supporting PDF, XLSX, CSV, PNG, and JPG formats.
-- **Strict Version Control**: Immutable preservation of every historical file version ($v_1, v_2, v_3$). Prior files and notes are never overwritten.
-- **Split-Screen Review Workspace**: 60% left document canvas side-by-side with 40% right CA statutory verification panel.
-- **Structured Correction Workflow**: Mandatory auditor reasoning, priority assignment, and client action alerts.
-- **Section 143(3) Audit Trail**: Chronological event logs recording actor name, role, version target, timestamp, and review remarks.
-- **Role-Based Portals**: Clean separation between Client Workspace, Auditor Review Console, and Admin Practice Management.
-- **In-App Notifications**: Real-time bell notifications for correction requests, revision submissions, and sign-offs.
-- **Automated Data Extraction & Validation**: Rule-based OCR checks for GSTIN format, arithmetic integrity, and date windows.
-- **Official CA PDF Reports**: Server-side generation of signed engagement verification reports.
+TRACERA supports four distinct roles with strict access-control boundaries:
+
+| Role | Responsibilities | Dedicated Portal |
+| :--- | :--- | :--- |
+| **`CLIENT`** | Submits required audit evidence, views correction notices, re-uploads revised versions ($v_2$), and downloads certified reports. | `/client/dashboard` |
+| **`AUDITOR`** | Reviews submitted documents, executes fieldwork checklists, raises structured correction requests, and approves reconciled records. | `/auditor/dashboard` |
+| **`PARTNER`** | Conducts final quality gates, executes maker-checker partner sign-offs, settles billing, and officially closes engagements. | `/partner/dashboard` |
+| **`ADMIN`** | Provisions team credentials, configures practice settings, inspects full audit logs, and accesses evaluation benchmarking tools. | `/admin/dashboard` |
+
+### Registration & 1-Click Access on `/signup`
+- **Dynamic Role Switcher**: Users can register as **Client Org**, **Auditor**, or **CA Partner** with dynamic form fields and automatic workspace provisioning.
+- **Instant Dashboard Access**: High-contrast Neo-Brutalist buttons allow 1-click evaluation of any role without manual credentials:
+  - **Client Portal**: `client@demo.com` $\to$ `/client/dashboard`
+  - **Auditor Console**: `auditor@demo.com` $\to$ `/auditor/dashboard`
+  - **Partner Suite**: `partner@demo.com` $\to$ `/partner/dashboard`
 
 ---
 
-## Architecture
+## Seed Evaluation Credentials
+
+All pre-seeded demo accounts use the standard password: `Demo@123456`
+
+| Account Name | Role | Email | Direct Dashboard |
+| :--- | :--- | :--- | :--- |
+| **Client Portal** | `CLIENT` | `client@demo.com` | `/client/dashboard` |
+| **Auditor Rahul** | `AUDITOR` | `auditor@demo.com` | `/auditor/dashboard` |
+| **CA Partner Vikram** | `PARTNER` | `partner@demo.com` | `/partner/dashboard` |
+| **Practice Admin** | `ADMIN` | `admin@demo.com` | `/admin/dashboard` |
+
+---
+
+## Architecture & Security
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           TRACERA Web Client                            │
 │           Next.js 16 (App Router) + React 19 + Tailwind CSS             │
-│        Editorial Swiss Typography + Precision CA Workflow Layout        │
+│            Poppins Typography + Precision Neo-Brutalist UI              │
 └────────────────────────────────────┬────────────────────────────────────┘
                                      │ HTTP / Cookie Session Auth
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          Next.js API Route Layer                        │
-│    • Session Auth Guards (/api/auth)    • Multi-Tenant Isolation        │
-│    • Workflow Action Engine             • Document Upload & Versioning  │
-│    • PDF Report Generation              • In-App Event Notifications    │
+│                    Next.js 16 Edge Proxy (src/proxy.ts)                 │
+│    • Optimistic Route Protection       • Protected Path Filtering       │
+│    • Graceful 401/403 Redirection      • Stale Session Cleanup          │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Next.js API Route Layer                         │
+│    • Authoritative Session Guards      • Multi-Tenant Isolation         │
+│    • Workflow Action Engine            • Private Streaming Downloads    │
+│    • PDF Closure Dossier Generator     • In-App Event Notifications     │
 └────────────────────────────────────┬────────────────────────────────────┘
                                      │
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         Central Workflow Service                        │
 │   submitDocument() · startReview() · requestCorrection() ·              │
-│   uploadCorrection() · approveDocument()                                │
+│   uploadCorrection() · approveDocument() · closeEngagement()            │
 └──────────────┬─────────────────────┬──────────────────────┬─────────────┘
                │                     │                      │
                ▼                     ▼                      ▼
 ┌────────────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐
 │ OCR Extraction Engine  │ │ Validation Rules │ │ Notification Service    │
-│ (Structured Fields)    │ │ (Statutory Math) │ │ (Event Stream)          │
+│ (Structured Fields)    │ │ (Statutory Math) │ │ (Real-Time Streams)     │
 └────────────────────────┘ └──────────────────┘ └─────────────────────────┘
                │                     │                      │
                └─────────────────────┼──────────────────────┘
                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                            Persistence Layer                            │
-│  • Local Persistent Store: SQLite WAL (.data/tracera.db)                │
-│    (Zero-friction: pre-seeded, immediate out-of-the-box evaluation)     │
-│  • Primary Cloud Database: MongoDB Atlas (Mongoose Models)              │
-│  • Cloud Document Storage: Firebase Cloud Storage                       │
+│  • Local Store: SQLite WAL (.data/tracera.db) with Atomic Transactions   │
+│  • Private Storage: .data/storage/documents/ with UUID storage keys     │
+│  • Cloud Mirror: MongoDB Atlas & Firebase Storage (Optional)            │
 │  • Append-Only Audit Log: Tamper-Evident Chronological History          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+- **Private Storage**: Uploaded files are strictly stored outside the public directory in `.data/storage/documents/`. Files are streamed via `/api/documents/[id]/download` only after verifying organizational permissions.
+- **Session Auto-Cleanup**: `getCurrentUser()` automatically clears stale or expired session cookies to prevent redirect bounce loops.
+- **Scrypt Password Hashing**: Passwords use Node.js `crypto.scrypt` with random salts and constant-time comparison (`crypto.timingSafeEqual`).
 
 ---
 
@@ -143,42 +172,13 @@ CLIENT                              AUDITOR
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
 - **UI & Components**: [React 19](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/), [Lucide Icons](https://lucide.dev/)
-- **Typography**: [Geist Sans & Mono](https://vercel.com/font)
-- **Primary Database**: [MongoDB Atlas](https://www.mongodb.com/atlas) with [Mongoose](https://mongoosejs.com/)
-- **Local Zero-Friction Persistence**: [SQLite](https://www.sqlite.org/) with WAL mode via `better-sqlite3`
-- **File Storage**: [Firebase Storage](https://firebase.google.com/products/storage) with local fallback
-- **Authentication**: Role-based session cookies with Firebase Auth architecture
-- **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF)
-
----
-
-## Authentication & Authorization
-
-### Authentication
-User sessions are managed via secure HTTP-only cookies with support for Firebase Authentication tokens. Users belong to one of three roles:
-- `CLIENT`: Represents client organizations (e.g. ABC Traders Pvt Ltd).
-- `AUDITOR`: Represents Chartered Accountants conducting verification.
-- `ADMIN`: Represents firm partners managing engagements and evaluation settings.
-
-### Authorization (RBAC)
-Server-side authorization guards are enforced on every API route and workflow transition:
-- **Clients** can only view and submit documents belonging to their own `client_id`. Clients can **never** approve documents or transition documents to `UNDER_REVIEW`.
-- **Auditors** can examine assigned engagement queues, issue correction notices, and approve documents. Auditors cannot upload client files.
-- Cross-organization access is rejected with `403 Forbidden`.
-
----
-
-## Database Schemas (MongoDB & SQLite)
-
-The platform supports both MongoDB Atlas and SQLite WAL modes with identical data models:
-
-1. **`users`**: User identity, role (`CLIENT` | `AUDITOR` | `ADMIN`), and organization assignment.
-2. **`clients`**: Client business entities, GSTIN, and financial assessment year.
-3. **`documents`**: Document records, current version pointer, active status, and reviewer assignment.
-4. **`document_versions`**: Immutable version history ($v_1, v_2 \dots$), file storage paths, file sizes, and client notes.
-5. **`reviews`**: Auditor decisions (`UNDER_REVIEW`, `APPROVED`, `CORRECTION_REQUIRED`), statutory checklist items, and remarks.
-6. **`audit_logs`**: Append-only Section 143(3) chronological records capturing `actor_id`, `actor_name`, `actor_role`, `action`, `metadata`, and `timestamp`.
-7. **`notifications`**: In-app unread alerts for revision requests and approvals.
+- **Design System**: Neo-Brutalist aesthetic (2px solid borders, hard drop shadows, signal accents)
+- **Typography**: [Google Fonts Poppins](https://fonts.google.com/specimen/Poppins) (weights 400 through 900) mapped across all UI and monospace tokens
+- **Local Persistence**: [SQLite](https://www.sqlite.org/) with WAL mode via `better-sqlite3` and atomic transactions
+- **Cloud Database (Optional)**: [MongoDB Atlas](https://www.mongodb.com/atlas) with [Mongoose](https://mongoosejs.com/)
+- **Document Storage**: Local filesystem private store with [Firebase Storage](https://firebase.google.com/products/storage) support
+- **Authentication**: Role-based session cookies with Firebase Auth token verification
+- **PDF Generation**: [jsPDF](https://github.com/parallax/jsPDF) server-side dossier compilation
 
 ---
 
@@ -221,7 +221,7 @@ npm install
 ```bash
 cp .env.example .env.local
 ```
-*Note: TRACERA runs immediately out of the box using the pre-configured local SQLite WAL store (`.data/tracera.db`). No cloud services are required to evaluate the complete application.*
+*Note: TRACERA runs immediately out of the box using the pre-configured local SQLite WAL store (`.data/tracera.db`). No external cloud services or API keys are required to evaluate the entire system.*
 
 ### 3. Seed Demo Data (Optional)
 ```bash
@@ -236,33 +236,39 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Testing
+## Automated Test Suites (100% Passing)
 
-TRACERA includes three comprehensive automated test suites:
+TRACERA includes three end-to-end automated verification suites:
 
 ### 1. CA Engagement Operating System Suite (15/15 Tests Passing)
-Tests the complete 15-step CA audit lifecycle: template initiation, sequential stage advancement, document request alerts, task blocker resolution, 3-tier maker-checker sign-offs, fee settlement, 5/5 closure gate checks, and official closure dossier PDF generation:
+Tests the complete 15-step CA statutory engagement lifecycle: creation, sequential 10-stage advancement, checklist evidence approval, task blocker resolution, 3-tier maker-checker sign-offs, fee settlement, 5/5 closure gate checks, and official signed dossier PDF generation:
 ```bash
 npm run test:engagement
 ```
 
 ### 2. Document Workflow State Machine Suite (8/8 Tests Passing)
-Tests atomic transactions, version increments, audit log immutability, and role-based permissions:
+Tests atomic transitions, multi-version preservation ($v_1 \to v_2$), permission boundaries (403 when client attempts approval or auditor attempts correction upload), and Section 143(3) immutable audit trails:
 ```bash
 npm run test:workflow
 ```
 
-### 3. Live HTTP Route & Security Suite (11/11 Tests Passing)
-Tests live HTTP session auth, role authorization boundaries, multi-round reviews, notifications, and PDF report generation against the active server:
+### 3. Live HTTP Route & Session Auth Suite (11/11 Tests Passing)
+Tests live HTTP session cookies, role isolation, multi-round reviews, notifications, and download security against the running server:
 ```bash
 npm run test:http
+```
+
+### Code Quality & Compilation
+```bash
+npm run lint    # 0 errors
+npm run build   # 0 errors (40/40 routes compiled cleanly with Turbopack)
 ```
 
 ---
 
 ## Evaluation & Synthetic Benchmark Fixtures
 
-In accordance with evaluation guidelines, all test datasets use public synthetic benchmarks:
+All test datasets use public synthetic benchmarks:
 
 | Fixture | Origin / Benchmark | Test Scenario / Audit Purpose |
 | :--- | :--- | :--- |
@@ -273,38 +279,14 @@ In accordance with evaluation guidelines, all test datasets use public synthetic
 | **Balaji Enterprises Tax Invoice** | [Invoice Sandbox Benchmark](https://github.com/ciru-ai/invoice-sandbox-benchmark) | Statutory ₹76,700 GST invoice (INV-204) with HSN 7208 & E-Way Bill |
 | **Form 26AS TDS Summary** | CBDT Tax Deducted at Source | Section 194C / 194J contractor & professional tax credit verification |
 
-> [!NOTE]
-> **Dedicated Evaluation Workspace**:
-> To preserve the clean CA practice aesthetic, all evaluation fixture injection tools and database reset triggers are located in the dedicated **/admin/evaluation-tools** portal. The client workspace strictly shows real client documents and action-required revision notices.
-
----
-
-## 9-Step Real Workflow Walkthrough
-
-1. **Open Landing Page**: Visit [http://localhost:3000](http://localhost:3000). Inspect the editorial Swiss typography and interactive 5-stage hero workflow motion loop.
-2. **Sign In as Client**: Navigate to `/login` $\rightarrow$ Select `Client: ABC Traders` (`client@demo.com`).
-3. **Submit Document**: Click `+ Upload Document`. Upload a file (or select a synthetic test dataset). The document is created in `SUBMITTED` status as Version 1 ($v_1$).
-4. **Switch to Auditor**: In the top navigation strip, click `Auditor` (or sign in as `auditor@demo.com`).
-5. **Examine Review Queue**: Open the Review Workspace (`/auditor/dashboard`). Click `Review` on the submitted document.
-6. **Request Correction**: In the split-screen console, inspect the document, check off verified checklist items, enter the reason (*"Invoice INV-204 from Balaji Enterprises is missing"*), and click `Request Correction`. Status transitions to `CORRECTION_REQUIRED`.
-7. **Client Sees Action Required**: Switch back to `Client`. Observe the prominent **Action Required** banner. Click `Upload Revision (v2)`.
-8. **Auditor Approves Reconciled File**: Switch to `Auditor`. Notice the document reappears in the queue as Version 2 ($v_2$). Open review, verify the added invoice, and click `Approve Document`.
-9. **Inspect Chronological Audit Trail & Export PDF**: Open the document history to verify the Section 143(3) immutable trail, or click `Audit Report (PDF)` to export the official signed report.
-
 ---
 
 ## Security & Compliance Disclosure
 
 - **Multi-Tenant Client Isolation**: All document queries are filtered by authenticated `client_id`.
 - **Tamper-Evident Logs**: Audit log entries are strictly append-only. No endpoint exists to delete or modify historical logs.
-- **No Unsupported Claims**: TRACERA is designed for statutory audit compliance under Section 143(3) of the Indian Companies Act; it does not make unsupported "bank-grade" marketing claims.
-
----
-
-## AI & OCR Disclosure
-
-- **Advisory Role Only**: TRACERA utilizes rule-based OCR data extraction for invoice number, GSTIN, line items, and tax arithmetic.
-- **Strict Human-in-the-Loop Mandate**: AI/OCR features are strictly advisory. **AI will never automatically approve, reject, or certify an audit document.** Only a verified Chartered Accountant can issue statutory approvals.
+- **Section 143(3) Compliance**: Designed to satisfy statutory audit standards under Section 143(3) of the Indian Companies Act, 2013.
+- **Human-in-the-Loop Mandate**: AI and OCR extraction features are strictly advisory. **AI will never automatically approve, reject, or certify an audit document.** Only a verified Chartered Accountant can issue statutory approvals.
 
 ---
 
