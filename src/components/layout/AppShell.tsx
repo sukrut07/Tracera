@@ -110,6 +110,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
   const clientNav = [
     { name: 'Overview', href: '/client/dashboard' },
     { name: 'Documents', href: '/client/documents' },
+    { name: 'Action Required', href: '/client/action-required' },
     { name: 'History', href: '/client/history' },
   ];
 

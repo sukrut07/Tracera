@@ -361,24 +361,48 @@ export default function AuditorDocumentReviewPage({
               )}
             </div>
 
-            {/* Document Audit Trail Summary */}
-            <div className="border border-[#E5E5E0] bg-white p-4 font-mono text-xs space-y-3">
-              <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold block">
-                AUDIT TRAIL PROGRESSION
-              </span>
+            {/* Signature Audit Trail Progression */}
+            <div className="border border-[#E5E5E0] bg-white p-5 font-mono text-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-2">
+                <span className="text-[10px] uppercase tracking-widest text-[#777770] font-bold">
+                  IMMUTABLE AUDIT TRAIL
+                </span>
+                <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 border border-emerald-200">
+                  SEC. 143(3)
+                </span>
+              </div>
 
-              <div className="space-y-3 pt-1">
-                {document.audit_logs?.slice(0, 4).map((log, idx) => (
-                  <div key={idx} className="border-l-2 border-[#111110] pl-3 space-y-0.5 text-[11px]">
-                    <div className="flex justify-between text-[#777770] text-[10px]">
-                      <span className="font-bold text-[#111110]">{log.action}</span>
-                      <span>{new Date(log.created_at).toLocaleDateString('en-GB')}</span>
+              <div className="space-y-4 pt-1">
+                {document.audit_logs?.map((log, idx, arr) => {
+                  const isLast = idx === arr.length - 1;
+                  const comment = log.metadata?.comment || log.metadata?.reason;
+
+                  return (
+                    <div key={log.id || idx} className="relative pl-5">
+                      {!isLast && (
+                        <div className="absolute left-[4px] top-3 w-0.5 h-[calc(100%+14px)] bg-[#E5E5E0]" />
+                      )}
+                      <div className="absolute left-0 top-1.5 w-2 h-2 rounded-none bg-[#111110] border border-[#111110]" />
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between text-[10px] text-[#777770]">
+                          <span className="font-bold text-[#111110]">
+                            ● {log.action} {log.metadata?.version ? `(v${log.metadata.version})` : ''}
+                          </span>
+                          <span>{new Date(log.created_at).toLocaleDateString('en-GB')}</span>
+                        </div>
+                        <div className="text-[11px] text-[#555550]">
+                          By <strong className="text-[#111110]">{log.performed_by_name}</strong> ({log.performed_by_role})
+                        </div>
+                        {comment ? (
+                          <p className="text-[11px] font-sans text-[#333330] bg-[#FAFAF8] p-2 border-l-2 border-[#111110] mt-1">
+                            "{comment}"
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="text-[#555550]">
-                      By {log.performed_by_name} ({log.performed_by_role})
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
