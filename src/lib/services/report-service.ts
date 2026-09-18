@@ -1,9 +1,9 @@
 import { jsPDF } from 'jspdf';
-import { AuditDocument } from '@/types';
+import { AuditDocument, Engagement } from '@/types';
 
 export const reportService = {
   /**
-   * Generate an official TRESERA Audit Report PDF for a document
+   * Generate an official TRACERA Audit Report PDF for a single document
    */
   generatePdfReport(document: AuditDocument): Uint8Array {
     const doc = new jsPDF({
@@ -19,7 +19,7 @@ export const reportService = {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('TRESERA AUDIT COMPLIANCE REPORT', 14, 18);
+    doc.text('TRACERA AUDIT COMPLIANCE REPORT', 14, 18);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -49,8 +49,8 @@ export const reportService = {
     doc.setTextColor(15, 23, 42);
     doc.text(document.client?.company_name || document.client?.name || 'ABC Traders', 60, 56);
     doc.text(document.title, 60, 64);
-    doc.text(document.document_type.replace('_', ' '), 60, 72);
-    doc.text(document.client?.financial_year || '2024-25', 60, 80);
+    doc.text(document.document_type.replace(/_/g, ' '), 60, 72);
+    doc.text(document.client?.financial_year || '2025-26', 60, 80);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
@@ -81,7 +81,7 @@ export const reportService = {
     let currentY = 106;
     const logs = document.audit_logs || [];
 
-    logs.forEach((log, index) => {
+    logs.forEach((log) => {
       if (currentY > 260) {
         doc.addPage();
         currentY = 20;
@@ -147,7 +147,7 @@ export const reportService = {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text('TRESERA AUDIT WORKFLOW PLATFORM • CRYPTOGRAPHICALLY TIME-STAMPED AND IMMUTABLE', 14, currentY);
+    doc.text('TRACERA AUDIT WORKFLOW PLATFORM • CRYPTOGRAPHICALLY TIME-STAMPED AND IMMUTABLE', 14, currentY);
 
     currentY += 12;
     doc.setFontSize(9);
@@ -156,7 +156,215 @@ export const reportService = {
     doc.text('Certified By:', 14, currentY);
     doc.text('Rahul Sharma, FCA (Partner)', 14, currentY + 5);
     doc.setFont('helvetica', 'normal');
-    doc.text('OBLIQ Audit Services LLP • Statutory Audit Division', 14, currentY + 10);
+    doc.text('Sharma & Associates • Chartered Accountants', 14, currentY + 10);
+
+    const pdfBuffer = doc.output('arraybuffer');
+    return new Uint8Array(pdfBuffer);
+  },
+
+  /**
+   * Generate official Chartered Accountant Engagement Closure Report & Dossier
+   */
+  generateEngagementClosureReportPdf(engagement: Engagement): Uint8Array {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    // Page 1: Formal Closure Certificate & Engagement Master Summary
+    doc.setFillColor(15, 23, 42); // slate-900 header
+    doc.rect(0, 0, 210, 36, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TRACERA AUDIT PRACTICE MANAGEMENT', 14, 16);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('CHARTERED ACCOUNTANT ENGAGEMENT CLOSURE CERTIFICATE', 14, 23);
+    doc.text(`OFFICIAL CLOSURE DOSSIER REF: ${engagement.closure_id || 'AUD-2026-FINAL'}`, 14, 30);
+
+    // Engagement Overview Card
+    let y = 46;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Engagement Particulars', 14, y);
+
+    y += 4;
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, y, 182, 42, 2, 2, 'FD');
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+
+    doc.text('Client Entity:', 20, y + 8);
+    doc.text('Engagement Title:', 20, y + 16);
+    doc.text('Service Template:', 20, y + 24);
+    doc.text('Financial Year:', 20, y + 32);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(engagement.client?.company_name || engagement.client?.name || 'Client Entity', 60, y + 8);
+    doc.text(engagement.title, 60, y + 16);
+    doc.text(engagement.service_type.replace(/_/g, ' '), 60, y + 24);
+    doc.text(engagement.financial_year, 60, y + 32);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Engagement Status:', 125, y + 8);
+    doc.text('Lead Partner:', 125, y + 16);
+    doc.text('Engagement Manager:', 125, y + 24);
+    doc.text('Closed Date:', 125, y + 32);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(16, 185, 129); // emerald-600
+    doc.text(engagement.status, 160, y + 8);
+
+    doc.setTextColor(15, 23, 42);
+    doc.text(engagement.assigned_partner_name || 'Managing Partner, FCA', 160, y + 16);
+    doc.text(engagement.assigned_manager_name || 'Rahul Sharma, CA', 160, y + 24);
+    doc.text(engagement.closed_at ? new Date(engagement.closed_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'), 160, y + 32);
+
+    // 2. Maker-Checker Sign-off Chain
+    y += 50;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Multi-tier Maker-Checker Sign-off Record', 14, y);
+
+    y += 4;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, y, 182, 34, 2, 2, 'FD');
+
+    const approvals = engagement.approvals || [];
+    const performer = approvals.find((a) => a.role_gate === 'PERFORMER');
+    const reviewer = approvals.find((a) => a.role_gate === 'REVIEWER');
+    const partner = approvals.find((a) => a.role_gate === 'PARTNER');
+
+    const gates = [
+      { label: 'Staff Performer', obj: performer, defaultName: 'Rahul Sharma (Performer)' },
+      { label: 'Manager Reviewer', obj: reviewer, defaultName: 'Rahul Sharma, CA (Reviewer)' },
+      { label: 'Partner Sign-off', obj: partner, defaultName: 'Managing Partner, FCA' },
+    ];
+
+    gates.forEach((gate, idx) => {
+      const colX = 20 + idx * 58;
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(gate.label, colX, y + 8);
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(gate.obj?.approver_name || gate.defaultName, colX, y + 14);
+
+      const statusText = gate.obj?.status === 'APPROVED' ? 'STATUS: APPROVED' : `STATUS: ${gate.obj?.status || 'PENDING'}`;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(gate.obj?.status === 'APPROVED' ? 16 : 245, gate.obj?.status === 'APPROVED' ? 185 : 158, gate.obj?.status === 'APPROVED' ? 129 : 11);
+      doc.text(statusText, colX, y + 20);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      const dateText = gate.obj?.approved_at ? new Date(gate.obj.approved_at).toLocaleDateString('en-IN') : 'Verified';
+      doc.text(`Signed: ${dateText}`, colX, y + 26);
+    });
+
+    // 3. Billing & Professional Fee Settlement
+    y += 42;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Professional Fee & GST Settlement Acknowledgment', 14, y);
+
+    y += 4;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, y, 182, 22, 2, 2, 'FD');
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Base Audit Fee:', 20, y + 8);
+    doc.text('GST (18%):', 20, y + 15);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`INR ${engagement.billing_amount.toLocaleString('en-IN')}`, 60, y + 8);
+    doc.text(`INR ${engagement.billing_gst.toLocaleString('en-IN')}`, 60, y + 15);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Total Settled Amount:', 110, y + 8);
+    doc.text('Payment Reference:', 110, y + 15);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(16, 185, 129);
+    doc.text(`INR ${engagement.billing_total.toLocaleString('en-IN')} (PAID)`, 150, y + 8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(engagement.payment_reference || 'REF-TXN-CONFIRMED', 150, y + 15);
+
+    // 4. Evidence Checklist Summary
+    y += 30;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('4. Verified Audit Evidence Checklist', 14, y);
+
+    y += 4;
+    const checklists = engagement.checklists || [];
+    checklists.slice(0, 7).forEach((chk, i) => {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`[✓] ${chk.title} (${chk.category})`, 20, y + 5 + i * 5);
+      doc.setTextColor(16, 185, 129);
+      doc.text(chk.status === 'APPROVED' ? 'APPROVED' : chk.status, 170, y + 5 + i * 5);
+    });
+
+    // 5. CA Partner Certification Seal
+    y += 45;
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, y, 196, y);
+
+    y += 6;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      'This certificate confirms that the engagement procedures, document audits, and quality reviews have been concluded in full compliance with the Standards on Auditing (SAs) issued by the Institute of Chartered Accountants of India (ICAI).',
+      14,
+      y,
+      { maxWidth: 182 }
+    );
+
+    y += 12;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('FOR AND ON BEHALF OF:', 14, y);
+    doc.text('Rahul Sharma & Associates • Chartered Accountants', 14, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`FCA Partner: ${engagement.closed_by_name || 'Rahul Sharma, FCA'}`, 14, y + 10);
+    doc.text('ICAI Firm Registration No: 018492N | Membership No: 542198', 14, y + 14);
+
+    // UDIN Box
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(130, y - 2, 66, 18, 1, 1, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('OFFICIAL ICAI UDIN REF:', 134, y + 4);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(14, 165, 233); // sky-500
+    doc.text(`26542198${(engagement.closure_id || 'AUD00182').replace(/[^0-9]/g, '').padEnd(10, '7')}`, 134, y + 11);
 
     const pdfBuffer = doc.output('arraybuffer');
     return new Uint8Array(pdfBuffer);

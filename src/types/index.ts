@@ -69,22 +69,26 @@ export interface Review {
 
 export interface AuditLog {
   id: string;
-  document_id: string;
+  document_id?: string;
+  engagement_id?: string;
   actor_id: string;
   actor_name?: string;
   actor_role?: Role;
   performed_by_name?: string;
   performed_by_role?: Role;
-  action: AuditAction;
+  action: string;
   metadata: {
     version?: number;
     reason?: string;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH';
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     comment?: string;
     file_name?: string;
     assigned_to_name?: string;
-    previous_status?: DocumentStatus;
-    new_status?: DocumentStatus;
+    previous_status?: DocumentStatus | EngagementStatus;
+    new_status?: DocumentStatus | EngagementStatus;
+    stage?: string;
+    amount?: number;
+    reference?: string;
     [key: string]: unknown;
   };
   created_at: string;
@@ -93,6 +97,7 @@ export interface AuditLog {
 export interface AuditDocument {
   id: string;
   client_id: string;
+  engagement_id?: string | null;
   title: string;
   document_type: DocumentType;
   status: DocumentStatus;
@@ -129,8 +134,130 @@ export interface Notification {
   title: string;
   message: string;
   document_id?: string;
+  engagement_id?: string;
   read?: boolean | number;
   is_read?: boolean;
   link_url?: string;
   created_at: string;
+}
+
+// -------------------------------------------------------------
+// CA Engagement Types
+// -------------------------------------------------------------
+
+export type EngagementServiceType =
+  | 'STATUTORY_AUDIT'
+  | 'TAX_AUDIT'
+  | 'GST_COMPLIANCE'
+  | 'ITR_FILING';
+
+export type EngagementStatus =
+  | 'DRAFT'
+  | 'ACCEPTED'
+  | 'PLANNING'
+  | 'DOCUMENT_COLLECTION'
+  | 'IN_REVIEW'
+  | 'FIELDWORK'
+  | 'MANAGER_REVIEW'
+  | 'PARTNER_REVIEW'
+  | 'CLIENT_CONFIRMATION'
+  | 'READY_TO_CLOSE'
+  | 'CLOSED';
+
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'COMPLETED';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export interface EngagementStage {
+  id: string;
+  engagement_id: string;
+  stage_number: number;
+  name: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
+  owner_id?: string | null;
+  owner_name?: string;
+  due_date?: string;
+  completed_at?: string | null;
+  notes?: string | null;
+}
+
+export interface EngagementChecklistItem {
+  id: string;
+  engagement_id: string;
+  title: string;
+  category: string;
+  is_mandatory: boolean;
+  status: 'REQUIRED' | 'REQUESTED' | 'SUBMITTED' | 'APPROVED' | 'WAIVED';
+  document_id?: string | null;
+  request_message?: string | null;
+  requested_at?: string | null;
+  due_date?: string | null;
+  matched_document?: AuditDocument;
+}
+
+export interface EngagementTask {
+  id: string;
+  engagement_id: string;
+  title: string;
+  stage_number?: number;
+  assigned_to?: string | null;
+  assigned_to_name?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date?: string;
+  blocker_reason?: string | null;
+  blocked_by?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+export interface EngagementApproval {
+  id: string;
+  engagement_id: string;
+  role_gate: 'PERFORMER' | 'REVIEWER' | 'PARTNER';
+  approver_id?: string | null;
+  approver_name?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  remarks?: string | null;
+  approved_at?: string | null;
+}
+
+export interface Engagement {
+  id: string;
+  client_id: string;
+  title: string;
+  service_type: EngagementServiceType;
+  financial_year: string;
+  status: EngagementStatus;
+  current_stage_index: number;
+  total_stages: number;
+  progress_percent: number;
+  due_date: string;
+  assigned_partner_id?: string | null;
+  assigned_partner_name?: string;
+  assigned_manager_id?: string | null;
+  assigned_manager_name?: string;
+  assigned_staff_id?: string | null;
+  assigned_staff_name?: string;
+  billing_amount: number;
+  billing_gst: number;
+  billing_total: number;
+  billing_status: 'PENDING' | 'INVOICED' | 'PAID';
+  payment_reference?: string | null;
+  paid_at?: string | null;
+  closure_id?: string | null;
+  closed_at?: string | null;
+  closed_by_id?: string | null;
+  closed_by_name?: string;
+  closure_summary?: string | null;
+  created_at: string;
+  updated_at: string;
+
+  // Joined fields
+  client?: Client;
+  stages?: EngagementStage[];
+  checklists?: EngagementChecklistItem[];
+  tasks?: EngagementTask[];
+  approvals?: EngagementApproval[];
+  documents?: AuditDocument[];
+  audit_logs?: AuditLog[];
 }

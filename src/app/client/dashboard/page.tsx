@@ -14,8 +14,10 @@ import {
   ArrowUpRight,
   ChevronRight,
   AlertCircle,
+  Shield,
+  Layers,
 } from 'lucide-react';
-import { AuditDocument, DashboardStats, UserProfile } from '@/types';
+import { AuditDocument, DashboardStats, UserProfile, Engagement } from '@/types';
 import { DocumentStatusBadge } from '@/components/shared/DocumentStatusBadge';
 import { UploadDocumentModal } from '@/components/client/UploadDocumentModal';
 import { UploadCorrectionModal } from '@/components/client/UploadCorrectionModal';
@@ -23,6 +25,7 @@ import { AppShell } from '@/components/layout/AppShell';
 
 export default function ClientDashboardPage() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [activeEngagements, setActiveEngagements] = useState<Engagement[]>([]);
   const [documents, setDocuments] = useState<AuditDocument[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,12 +38,20 @@ export default function ClientDashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/documents');
-      const data = await res.json();
-      if (res.ok) {
-        setDocuments(data.documents || []);
-        setStats(data.stats || null);
-        setCurrentUser(data.currentUser || null);
+      const [resDocs, resEngs] = await Promise.all([
+        fetch('/api/documents'),
+        fetch('/api/engagements'),
+      ]);
+      const dataDocs = await resDocs.json();
+      const dataEngs = await resEngs.json();
+
+      if (resDocs.ok) {
+        setDocuments(dataDocs.documents || []);
+        setStats(dataDocs.stats || null);
+        setCurrentUser(dataDocs.currentUser || null);
+      }
+      if (resEngs.ok) {
+        setActiveEngagements(dataEngs.engagements || []);
       }
     } catch (err) {
       console.error('Failed to load client dashboard data:', err);
@@ -139,6 +150,61 @@ export default function ClientDashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Active CA Engagement Banner */}
+        {activeEngagements.length > 0 && (
+          <div className="bg-white border-2 border-[#111110] p-6 space-y-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#F0F0EC] pb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#111110]" />
+                <span className="text-[11px] font-mono font-bold text-[#111110] uppercase tracking-wider">
+                  ACTIVE CA AUDIT ENGAGEMENT: {activeEngagements[0].service_type.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                {activeEngagements[0].status.replace(/_/g, ' ')}
+              </span>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-[#111110]">
+                  {activeEngagements[0].title}
+                </h3>
+                <p className="text-xs font-mono text-[#777770] mt-1">
+                  Lead Partner: {activeEngagements[0].assigned_partner_name || 'Rahul Sharma, FCA'} &bull; Target Due: {activeEngagements[0].due_date}
+                </p>
+              </div>
+
+              <Link
+                href={`/engagements/${activeEngagements[0].id}`}
+                className="px-4 py-2 bg-[#111110] text-white text-xs font-mono hover:bg-[#2A2A28] transition-colors flex items-center gap-2 self-start md:self-auto shrink-0 shadow-xs"
+              >
+                <span>OPEN AUDIT ROOM WORKSPACE</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Stage Progress Bar */}
+            <div className="space-y-1 pt-1">
+              <div className="flex justify-between text-xs font-mono text-[#777770]">
+                <span>Stage {activeEngagements[0].current_stage_index + 1} of {activeEngagements[0].total_stages}</span>
+                <span className="font-bold text-[#111110]">{activeEngagements[0].progress_percent}% Complete</span>
+              </div>
+              <div className="w-full bg-[#EEEEEC] h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-[#111110] h-full transition-all"
+                  style={{ width: `${activeEngagements[0].progress_percent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* What happens next guide */}
+            <div className="bg-[#F8F9FA] border border-[#E5E5E0] rounded p-3 text-xs text-[#555550] font-mono leading-relaxed">
+              <strong className="text-[#111110]">WHAT HAPPENS NEXT:</strong> Audit team is currently collecting and reconciling documents. Ensure your Bank Statements, GST Returns, and Purchase Registers are submitted to avoid audit procedure blockers.
+            </div>
+          </div>
+        )}
 
         {/* 2. Primary Focal Block: Action Required Card (If corrections exist) */}
         {correctionPendingDocs.length > 0 && (

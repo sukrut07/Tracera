@@ -21,7 +21,7 @@ import { CommandPalette } from '@/components/shared/CommandPalette';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 
 interface AppShellProps {
-  currentUser: UserProfile;
+  currentUser?: UserProfile | null;
   children: React.ReactNode;
 }
 
@@ -102,13 +102,23 @@ export function AppShell({ currentUser, children }: AppShellProps) {
     window.location.href = '/login';
   };
 
-  const isClient = currentUser.role === 'CLIENT';
-  const isAdmin = currentUser.role === 'ADMIN';
-  const isAuditor = currentUser.role === 'AUDITOR';
+  const activeUser: UserProfile = currentUser || {
+    id: 'u2222222-2222-2222-2222-222222222222',
+    name: pathname.startsWith('/client') ? 'ABC Traders (Client)' : 'Rahul Sharma',
+    email: pathname.startsWith('/client') ? 'client@demo.com' : 'auditor@demo.com',
+    role: pathname.startsWith('/client') ? 'CLIENT' : 'AUDITOR',
+    client_id: pathname.startsWith('/client') ? 'c1111111-1111-1111-1111-111111111111' : null,
+    created_at: '',
+  };
+
+  const isClient = activeUser.role === 'CLIENT';
+  const isAdmin = activeUser.role === 'ADMIN';
+  const isAuditor = activeUser.role === 'AUDITOR';
 
   // Role-specific navigation links
   const clientNav = [
     { name: 'Overview', href: '/client/dashboard' },
+    { name: 'Engagements', href: '/client/engagements' },
     { name: 'Documents', href: '/client/documents' },
     { name: 'Action Required', href: '/client/action-required' },
     { name: 'History', href: '/client/history' },
@@ -116,6 +126,8 @@ export function AppShell({ currentUser, children }: AppShellProps) {
 
   const auditorNav = [
     { name: 'Overview', href: '/auditor/dashboard' },
+    { name: 'Engagements', href: '/auditor/engagements' },
+    { name: 'My Work', href: '/auditor/my-work' },
     { name: 'Review Queue', href: '/auditor/reviews' },
     { name: 'Documents', href: '/auditor/dashboard?filter=all' },
     { name: 'History', href: '/auditor/history' },
@@ -123,6 +135,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
 
   const adminNav = [
     { name: 'Overview', href: '/admin/dashboard' },
+    { name: 'Engagements', href: '/auditor/engagements' },
     { name: 'Clients', href: '/admin/clients' },
     { name: 'Documents', href: '/admin/documents' },
     { name: 'Evaluation Tools', href: '/admin/evaluation-tools' },
@@ -139,7 +152,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
             ACTIVE PERSONA:
           </span>
           <span className="text-[#FAFAF8] font-bold">
-            {currentUser.name} ({currentUser.role})
+            {activeUser.name} ({activeUser.role})
           </span>
           {isClient && (
             <span className="hidden sm:inline-block text-[#777770]">
@@ -157,7 +170,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
               onClick={() => handleQuickSwitch('client@demo.com')}
               disabled={isSwitching}
               className={`hover:text-[#FAFAF8] transition-colors cursor-pointer ${
-                currentUser.role === 'CLIENT' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
+                activeUser.role === 'CLIENT' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
               }`}
             >
               Client
@@ -167,7 +180,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
               onClick={() => handleQuickSwitch('auditor@demo.com')}
               disabled={isSwitching}
               className={`hover:text-[#FAFAF8] transition-colors cursor-pointer ${
-                currentUser.role === 'AUDITOR' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
+                activeUser.role === 'AUDITOR' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
               }`}
             >
               Auditor
@@ -177,7 +190,7 @@ export function AppShell({ currentUser, children }: AppShellProps) {
               onClick={() => handleQuickSwitch('admin@demo.com')}
               disabled={isSwitching}
               className={`hover:text-[#FAFAF8] transition-colors cursor-pointer ${
-                currentUser.role === 'ADMIN' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
+                activeUser.role === 'ADMIN' ? 'text-[#FAFAF8] font-bold underline underline-offset-4' : ''
               }`}
             >
               Admin
@@ -268,10 +281,10 @@ export function AppShell({ currentUser, children }: AppShellProps) {
             <div className="hidden lg:flex items-center gap-2.5 pl-3 border-l border-[#E5E5E0]">
               <div className="text-right">
                 <span className="block text-xs font-bold text-[#111110] leading-tight font-mono">
-                  {currentUser.name}
+                  {activeUser.name}
                 </span>
                 <span className="block text-[10px] font-mono uppercase text-[#777770] tracking-wider">
-                  {currentUser.role}
+                  {activeUser.role}
                 </span>
               </div>
             </div>

@@ -32,9 +32,29 @@ TRACERA replaces fragmented communication channels with **one unified, traceable
 
 ---
 
-## Core Workflow
+### The CA Engagement Operating System
 
-TRACERA enforces a strict 5-stage statutory lifecycle:
+TRACERA elevates practice management from isolated document reviews to an integrated CA engagement lifecycle:
+
+$$\text{CLIENT} \longrightarrow \text{ENGAGEMENT} \longrightarrow \text{WORKFLOW} \longrightarrow \text{TASKS + DOCUMENTS} \longrightarrow \text{REVIEW} \longrightarrow \text{CORRECTIONS} \longrightarrow \text{APPROVAL} \longrightarrow \text{CLOSURE} \longrightarrow \text{AUDIT TRAIL}$$
+
+#### The Signature Audit Room Workspace (`/engagements/[id]`)
+Each client audit engagement operates within a dedicated workspace featuring an interactive 10-stage gate progress bar and 8 specialized sub-tabs:
+
+1. **Overview**: Executive portfolio summary, team ownership (Lead Partner, Practice Manager, Staff Performer), statutory due date, and billing totals.
+2. **Workflow Stages**: Full sequential operational progression (from Stage 01 Acceptance to Stage 10 Closure) with owner assignment, audit notes, and stage advancement gates.
+3. **Document Evidence Checklist**: 12 mandatory CA audit documents categorized into Financials, Banking, Purchases & GST, Sales, and Statutory Compliance. Auditor can issue structured document requests with due dates directly to the client.
+4. **Tasks & Fieldwork**: Procedure tracking with urgency pills (`URGENT`, `HIGH`, `MEDIUM`) and active blocker alerting (e.g. `Blocked by: Client - Missing June Bank Statement`).
+5. **Maker-Checker Approvals**: Enforced 3-tier sequence (Staff Performer $\rightarrow$ Manager Reviewer $\rightarrow$ Lead CA Partner Sign-off) with cryptographic audit timestamps.
+6. **Billing & Fees**: Professional fee computation (Base Audit Fee ₹25,000 + 18% GST ₹4,500 = ₹29,500) with payment recording and receipt tracking.
+7. **Unified Timeline**: Append-only chronological audit trail harmonizing high-level engagement milestones and granular document-level actions.
+8. **Engagement Closure**: 5-point formal gate verification. When all 5 prerequisites pass, the partner seals the engagement with an immutable Closure ID (`AUD-2026-XXXXX`) and generates the official signed CA Closure Dossier PDF.
+
+---
+
+### Document-Level Workflow
+
+TRACERA also enforces a strict 5-stage statutory lifecycle for individual financial records:
 
 ```
 CLIENT                              AUDITOR
@@ -218,21 +238,25 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Testing
 
-TRESERA includes two comprehensive automated test suites:
+TRACERA includes three comprehensive automated test suites:
 
-### 1. Workflow State Machine Suite
+### 1. CA Engagement Operating System Suite (15/15 Tests Passing)
+Tests the complete 15-step CA audit lifecycle: template initiation, sequential stage advancement, document request alerts, task blocker resolution, 3-tier maker-checker sign-offs, fee settlement, 5/5 closure gate checks, and official closure dossier PDF generation:
+```bash
+npm run test:engagement
+```
+
+### 2. Document Workflow State Machine Suite (8/8 Tests Passing)
 Tests atomic transactions, version increments, audit log immutability, and role-based permissions:
 ```bash
 npm run test:workflow
 ```
-*Result: 8/8 tests passing.*
 
-### 2. Live HTTP Route & Security Suite
+### 3. Live HTTP Route & Security Suite (11/11 Tests Passing)
 Tests live HTTP session auth, role authorization boundaries, multi-round reviews, notifications, and PDF report generation against the active server:
 ```bash
 npm run test:http
 ```
-*Result: 11/11 tests passing.*
 
 ---
 

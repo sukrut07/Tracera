@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:workflow": "tsx scripts/verify-workflow.ts",
     "test:http": "tsx scripts/verify-http-workflow.ts",
+    "test:engagement": "tsx scripts/verify-engagement-workflow.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "clear:demo": "tsx scripts/clear-demo.ts"
   },

@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import {
   UserProfile,
   Client,
@@ -13,6 +14,15 @@ import {
   AuditAction,
   DashboardStats,
   Role,
+  Engagement,
+  EngagementStatus,
+  EngagementStage,
+  EngagementChecklistItem,
+  EngagementTask,
+  EngagementApproval,
+  EngagementServiceType,
+  TaskStatus,
+  TaskPriority,
 } from '@/types';
 
 const DB_DIR = path.join(process.cwd(), '.data');
@@ -94,7 +104,8 @@ function initSchema(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS audit_logs (
       id TEXT PRIMARY KEY,
-      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+      engagement_id TEXT,
       actor_id TEXT NOT NULL REFERENCES users(id),
       action TEXT NOT NULL,
       metadata TEXT NOT NULL DEFAULT '{}',
@@ -129,14 +140,157 @@ function initSchema(db: Database.Database) {
       UNIQUE(document_id, version_id)
     );
 
+    -- CA Engagements Master Table
+    CREATE TABLE IF NOT EXISTS engagements (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      service_type TEXT NOT NULL,
+      financial_year TEXT NOT NULL,
+      status TEXT NOT NULL,
+      current_stage_index INTEGER NOT NULL DEFAULT 0,
+      total_stages INTEGER NOT NULL DEFAULT 10,
+      progress_percent INTEGER NOT NULL DEFAULT 0,
+      due_date TEXT NOT NULL,
+      assigned_partner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      assigned_partner_name TEXT,
+      assigned_manager_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      assigned_manager_name TEXT,
+      assigned_staff_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      assigned_staff_name TEXT,
+      billing_amount REAL NOT NULL DEFAULT 0,
+      billing_gst REAL NOT NULL DEFAULT 0,
+      billing_total REAL NOT NULL DEFAULT 0,
+      billing_status TEXT NOT NULL DEFAULT 'PENDING',
+      payment_reference TEXT,
+      paid_at TEXT,
+      closure_id TEXT,
+      closed_at TEXT,
+      closed_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      closed_by_name TEXT,
+      closure_summary TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Engagement Operational Stages
+    CREATE TABLE IF NOT EXISTS engagement_stages (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      stage_number INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      owner_name TEXT,
+      due_date TEXT,
+      completed_at TEXT,
+      notes TEXT,
+      UNIQUE(engagement_id, stage_number)
+    );
+
+    -- Engagement Document Checklist Items
+    CREATE TABLE IF NOT EXISTS engagement_checklists (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      is_mandatory INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'REQUIRED',
+      document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+      request_message TEXT,
+      requested_at TEXT,
+      due_date TEXT
+    );
+
+    -- Engagement Work Items / Tasks
+    CREATE TABLE IF NOT EXISTS engagement_tasks (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      stage_number INTEGER,
+      assigned_to TEXT REFERENCES users(id) ON DELETE SET NULL,
+      assigned_to_name TEXT,
+      status TEXT NOT NULL DEFAULT 'TODO',
+      priority TEXT NOT NULL DEFAULT 'MEDIUM',
+      due_date TEXT,
+      blocker_reason TEXT,
+      blocked_by TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- Multi-tier Maker-Checker Approvals
+    CREATE TABLE IF NOT EXISTS engagement_approvals (
+      id TEXT PRIMARY KEY,
+      engagement_id TEXT NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+      role_gate TEXT NOT NULL,
+      approver_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      approver_name TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      remarks TEXT,
+      approved_at TEXT,
+      UNIQUE(engagement_id, role_gate)
+    );
+
+    -- Indexes
     CREATE INDEX IF NOT EXISTS idx_docs_client ON documents(client_id);
     CREATE INDEX IF NOT EXISTS idx_docs_status ON documents(status);
     CREATE INDEX IF NOT EXISTS idx_docs_assigned ON documents(assigned_to);
     CREATE INDEX IF NOT EXISTS idx_audit_doc ON audit_logs(document_id, created_at ASC);
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(recipient_id, read, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_eng_client ON engagements(client_id);
+    CREATE INDEX IF NOT EXISTS idx_eng_status ON engagements(status);
+    CREATE INDEX IF NOT EXISTS idx_eng_stages ON engagement_stages(engagement_id, stage_number);
+    CREATE INDEX IF NOT EXISTS idx_eng_checklist ON engagement_checklists(engagement_id);
+    CREATE INDEX IF NOT EXISTS idx_eng_tasks ON engagement_tasks(engagement_id, status);
+    CREATE INDEX IF NOT EXISTS idx_eng_approvals ON engagement_approvals(engagement_id);
   `);
 
+  // Safe migrations for columns
+  try {
+    const docCols = db.prepare('PRAGMA table_info(documents)').all() as { name: string }[];
+    if (!docCols.some((c) => c.name === 'engagement_id')) {
+      db.exec('ALTER TABLE documents ADD COLUMN engagement_id TEXT REFERENCES engagements(id) ON DELETE SET NULL');
+    }
+
+    const notifCols = db.prepare('PRAGMA table_info(notifications)').all() as { name: string }[];
+    if (!notifCols.some((c) => c.name === 'engagement_id')) {
+      db.exec('ALTER TABLE notifications ADD COLUMN engagement_id TEXT REFERENCES engagements(id) ON DELETE CASCADE');
+    }
+
+    const auditCols = db.prepare('PRAGMA table_info(audit_logs)').all() as any[];
+    const docIdCol = auditCols.find((c) => c.name === 'document_id');
+    const hasEngCol = auditCols.some((c) => c.name === 'engagement_id');
+
+    // If document_id was NOT NULL, migrate table to allow NULL document_id for engagement events
+    if (docIdCol && docIdCol.notnull === 1) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS audit_logs_temp (
+          id TEXT PRIMARY KEY,
+          document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+          engagement_id TEXT,
+          actor_id TEXT NOT NULL REFERENCES users(id),
+          action TEXT NOT NULL,
+          metadata TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO audit_logs_temp (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+          SELECT id, document_id, NULL, actor_id, action, metadata, created_at FROM audit_logs;
+        DROP TABLE audit_logs;
+        ALTER TABLE audit_logs_temp RENAME TO audit_logs;
+        CREATE INDEX IF NOT EXISTS idx_audit_doc ON audit_logs(document_id, created_at ASC);
+        CREATE INDEX IF NOT EXISTS idx_audit_eng ON audit_logs(engagement_id, created_at ASC);
+      `);
+    } else if (!hasEngCol) {
+      db.exec('ALTER TABLE audit_logs ADD COLUMN engagement_id TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_audit_eng ON audit_logs(engagement_id, created_at ASC)');
+    }
+  } catch (err) {
+    console.warn('DB column check notice:', err);
+  }
+
   seedData(db);
+  seedEngagements(db);
 }
 
 function seedData(db: Database.Database) {
@@ -246,6 +400,274 @@ function seedData(db: Database.Database) {
   insertAudit.run('a5555555-5555-5555-5555-555555555553', doc5Id, uAuditorId, 'DOCUMENT_APPROVED', JSON.stringify({ version: 1, comment: 'Bill of entry and custom duty receipt verified against ICEGATE.' }), now);
 }
 
+function seedEngagements(db: Database.Database) {
+  const engCount = db.prepare('SELECT COUNT(*) as count FROM engagements').get() as { count: number };
+  if (engCount.count > 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const earlier1 = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+  const earlier2 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+  const client1Id = 'c1111111-1111-1111-1111-111111111111'; // ABC Traders
+  const client2Id = 'c2222222-2222-2222-2222-222222222222'; // XYZ Enterprises
+  const uAuditorId = 'u2222222-2222-2222-2222-222222222222'; // Rahul Sharma
+  const uAdminId = 'u3333333-3333-3333-3333-333333333333'; // Managing Partner
+
+  const eng1Id = 'eng-statutory-abc-2025';
+
+  // 1. ABC Traders Statutory Audit
+  db.prepare(`
+    INSERT INTO engagements (
+      id, client_id, title, service_type, financial_year, status,
+      current_stage_index, total_stages, progress_percent, due_date,
+      assigned_partner_id, assigned_partner_name,
+      assigned_manager_id, assigned_manager_name,
+      assigned_staff_id, assigned_staff_name,
+      billing_amount, billing_gst, billing_total, billing_status,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?, ?, ?,
+      ?, ?
+    )
+  `).run(
+    eng1Id,
+    client1Id,
+    'ABC Traders Pvt Ltd · FY 2025–26 Statutory Audit',
+    'STATUTORY_AUDIT',
+    '2025-26',
+    'DOCUMENT_COLLECTION',
+    2, // 0-indexed stage 3: Document Collection
+    10,
+    35,
+    '2026-09-30',
+    uAdminId,
+    'Managing Partner (Admin)',
+    uAuditorId,
+    'Rahul Sharma',
+    uAuditorId,
+    'Rahul Sharma',
+    25000,
+    4500,
+    29500,
+    'INVOICED',
+    earlier2,
+    now
+  );
+
+  // 10 Stages for Statutory Audit
+  const stages = [
+    { num: 1, name: '01 Engagement Acceptance', status: 'COMPLETED', completed_at: earlier2 },
+    { num: 2, name: '02 Planning & Risk Assessment', status: 'COMPLETED', completed_at: earlier1 },
+    { num: 3, name: '03 Document Collection', status: 'IN_PROGRESS', completed_at: null },
+    { num: 4, name: '04 Preliminary Review', status: 'PENDING', completed_at: null },
+    { num: 5, name: '05 Fieldwork & Substantive Testing', status: 'PENDING', completed_at: null },
+    { num: 6, name: '06 Manager Review', status: 'PENDING', completed_at: null },
+    { num: 7, name: '07 Partner Review', status: 'PENDING', completed_at: null },
+    { num: 8, name: '08 Client Confirmation', status: 'PENDING', completed_at: null },
+    { num: 9, name: '09 Finalisation & Reporting', status: 'PENDING', completed_at: null },
+    { num: 10, name: '10 Engagement Closure', status: 'PENDING', completed_at: null },
+  ];
+
+  const insertStage = db.prepare(`
+    INSERT INTO engagement_stages (id, engagement_id, stage_number, name, status, owner_id, owner_name, due_date, completed_at, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  stages.forEach((st) => {
+    insertStage.run(
+      `stg-${eng1Id}-${st.num}`,
+      eng1Id,
+      st.num,
+      st.name,
+      st.status,
+      uAuditorId,
+      'Rahul Sharma',
+      '2026-09-30',
+      st.completed_at,
+      st.num === 3 ? 'Awaiting outstanding debtor ageing and sales registers from client.' : null
+    );
+  });
+
+  // 12 Checklist Items for Statutory Audit
+  const checklist = [
+    { title: 'Trial Balance', cat: 'Financials', status: 'APPROVED', docId: 'd1111111-1111-1111-1111-111111111111' },
+    { title: 'General Ledger', cat: 'Books of Accounts', status: 'SUBMITTED', docId: 'd3333333-3333-3333-3333-333333333333' },
+    { title: 'Bank Statements (All 4 Quarters)', cat: 'Banking', status: 'APPROVED', docId: 'd1111111-1111-1111-1111-111111111111' },
+    { title: 'Purchase Register with GSTR-2B Recon', cat: 'Purchases & GST', status: 'SUBMITTED', docId: 'd2222222-2222-2222-2222-222222222222' },
+    { title: 'Sales Register with GSTR-1 Recon', cat: 'Sales & GST', status: 'REQUIRED', docId: null },
+    { title: 'GST Returns (GSTR-3B & GSTR-1 Files)', cat: 'Statutory', status: 'APPROVED', docId: null },
+    { title: 'TDS Returns & Form 26AS / AIS', cat: 'Taxation', status: 'REQUESTED', docId: null, msg: 'Please provide Q4 TDS return acknowledgment and Form 26AS download.' },
+    { title: 'Fixed Asset Register & Depreciation Schedule', cat: 'Fixed Assets', status: 'REQUIRED', docId: null },
+    { title: 'Debtor Ageing & Balance Confirmations', cat: 'Receivables', status: 'REQUIRED', docId: null },
+    { title: 'Creditor Ageing & MSME Classification', cat: 'Payables', status: 'REQUIRED', docId: null },
+    { title: 'Previous Year Signed Financial Statements', cat: 'Prior Year', status: 'APPROVED', docId: null },
+    { title: 'Director Signing Declarations & MGT-7', cat: 'Corporate Compliance', status: 'REQUIRED', docId: null },
+  ];
+
+  const insertChecklist = db.prepare(`
+    INSERT INTO engagement_checklists (id, engagement_id, title, category, is_mandatory, status, document_id, request_message, requested_at, due_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  checklist.forEach((item, idx) => {
+    insertChecklist.run(
+      `chk-${eng1Id}-${idx + 1}`,
+      eng1Id,
+      item.title,
+      item.cat,
+      1,
+      item.status,
+      item.docId,
+      item.msg || null,
+      item.status === 'REQUESTED' ? earlier1 : null,
+      '2026-09-25'
+    );
+  });
+
+  // 5 Tasks for Statutory Audit
+  const tasks = [
+    { title: 'Verify Bank Reconciliation Statement (BRS)', status: 'COMPLETED', prio: 'HIGH', blockedBy: null, reason: null, completedAt: earlier1 },
+    { title: 'Reconcile Purchase Register with GSTR-2B', status: 'BLOCKED', prio: 'URGENT', blockedBy: 'Client - Missing June Bank Statement & Supplier Invoices', reason: 'ITC mismatch of ₹42,800 between books and GSTR-2B portal dump.', completedAt: null },
+    { title: 'Fixed Asset physical verification sample selection', status: 'IN_PROGRESS', prio: 'MEDIUM', blockedBy: null, reason: null, completedAt: null },
+    { title: 'TDS Challan & 26AS matching', status: 'TODO', prio: 'MEDIUM', blockedBy: null, reason: null, completedAt: null },
+    { title: 'Statutory Audit Checklist Sign-off', status: 'TODO', prio: 'HIGH', blockedBy: null, reason: null, completedAt: null },
+  ];
+
+  const insertTask = db.prepare(`
+    INSERT INTO engagement_tasks (id, engagement_id, title, stage_number, assigned_to, assigned_to_name, status, priority, due_date, blocker_reason, blocked_by, completed_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  tasks.forEach((t, idx) => {
+    insertTask.run(
+      `tsk-${eng1Id}-${idx + 1}`,
+      eng1Id,
+      t.title,
+      3,
+      uAuditorId,
+      'Rahul Sharma',
+      t.status,
+      t.prio,
+      '2026-09-28',
+      t.reason,
+      t.blockedBy,
+      t.completedAt,
+      earlier2
+    );
+  });
+
+  // 3 Multi-tier Maker-Checker Approvals
+  const approvals = [
+    { role: 'PERFORMER', name: 'Rahul Sharma', status: 'APPROVED', remarks: 'Preliminary testing & audit procedures for available documents complete.', approvedAt: earlier1 },
+    { role: 'REVIEWER', name: 'Rahul Sharma', status: 'PENDING', remarks: 'Awaiting June purchase recon and client balance confirmations.', approvedAt: null },
+    { role: 'PARTNER', name: 'Managing Partner (Admin)', status: 'PENDING', remarks: null, approvedAt: null },
+  ];
+
+  const insertApproval = db.prepare(`
+    INSERT INTO engagement_approvals (id, engagement_id, role_gate, approver_id, approver_name, status, remarks, approved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  approvals.forEach((a) => {
+    insertApproval.run(
+      `app-${eng1Id}-${a.role}`,
+      eng1Id,
+      a.role,
+      a.role === 'PARTNER' ? uAdminId : uAuditorId,
+      a.name,
+      a.status,
+      a.remarks,
+      a.approvedAt
+    );
+  });
+
+  // Link existing ABC documents to engagement
+  try {
+    db.prepare(`UPDATE documents SET engagement_id = ? WHERE id IN ('d1111111-1111-1111-1111-111111111111', 'd2222222-2222-2222-2222-222222222222', 'd3333333-3333-3333-3333-333333333333')`).run(eng1Id);
+  } catch {}
+
+  // Engagement audit log
+  db.prepare(`
+    INSERT INTO audit_logs (id, engagement_id, actor_id, action, metadata, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    `a-eng-${eng1Id}-1`,
+    eng1Id,
+    uAdminId,
+    'ENGAGEMENT_CREATED',
+    JSON.stringify({ title: 'ABC Traders Pvt Ltd · FY 2025–26 Statutory Audit', service_type: 'STATUTORY_AUDIT', financial_year: '2025-26' }),
+    earlier2
+  );
+  db.prepare(`
+    INSERT INTO audit_logs (id, engagement_id, actor_id, action, metadata, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    `a-eng-${eng1Id}-2`,
+    eng1Id,
+    uAuditorId,
+    'STAGE_ADVANCED',
+    JSON.stringify({ from_stage: '02 Planning & Risk Assessment', to_stage: '03 Document Collection', stage_number: 3 }),
+    earlier1
+  );
+
+  // 2. XYZ Enterprises Tax Audit
+  const eng2Id = 'eng-tax-xyz-2025';
+  db.prepare(`
+    INSERT INTO engagements (
+      id, client_id, title, service_type, financial_year, status,
+      current_stage_index, total_stages, progress_percent, due_date,
+      assigned_partner_id, assigned_partner_name,
+      assigned_manager_id, assigned_manager_name,
+      assigned_staff_id, assigned_staff_name,
+      billing_amount, billing_gst, billing_total, billing_status,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?, ?, ?,
+      ?, ?
+    )
+  `).run(
+    eng2Id,
+    client2Id,
+    'XYZ Enterprises LLP · FY 2025–26 Tax Audit (Sec 44AB)',
+    'TAX_AUDIT',
+    '2025-26',
+    'PLANNING',
+    1,
+    8,
+    20,
+    '2026-10-15',
+    uAdminId,
+    'Managing Partner (Admin)',
+    uAuditorId,
+    'Rahul Sharma',
+    uAuditorId,
+    'Rahul Sharma',
+    35000,
+    6300,
+    41300,
+    'PENDING',
+    earlier1,
+    now
+  );
+
+  // Link XYZ docs
+  try {
+    db.prepare(`UPDATE documents SET engagement_id = ? WHERE id IN ('d4444444-4444-4444-4444-444444444444', 'd5555555-5555-5555-5555-555555555555')`).run(eng2Id);
+  } catch {}
+}
+
 // ================= Repository Access Methods =================
 
 export function getUserByEmail(email: string): UserProfile | null {
@@ -276,6 +698,7 @@ export function getDocuments(filters?: {
   status?: DocumentStatus;
   documentType?: DocumentType;
   search?: string;
+  engagementId?: string;
 }): AuditDocument[] {
   const db = getDb();
   let query = `
@@ -308,6 +731,11 @@ export function getDocuments(filters?: {
     params.push(filters.documentType);
   }
 
+  if (filters?.engagementId) {
+    query += ' AND d.engagement_id = ?';
+    params.push(filters.engagementId);
+  }
+
   if (filters?.search) {
     query += ' AND (d.title LIKE ? OR c.name LIKE ? OR c.company_name LIKE ?)';
     const s = `%${filters.search}%`;
@@ -321,6 +749,7 @@ export function getDocuments(filters?: {
   return rows.map((row) => ({
     id: row.id,
     client_id: row.client_id,
+    engagement_id: row.engagement_id || null,
     title: row.title,
     document_type: row.document_type as DocumentType,
     status: row.status as DocumentStatus,
@@ -444,6 +873,7 @@ export function getDocumentById(id: string): AuditDocument | null {
     return {
       id: a.id,
       document_id: a.document_id,
+      engagement_id: a.engagement_id || undefined,
       actor_id: a.actor_id,
       actor_name: a.actor_name,
       actor_role: a.actor_role,
@@ -456,6 +886,7 @@ export function getDocumentById(id: string): AuditDocument | null {
   return {
     id: docRow.id,
     client_id: docRow.client_id,
+    engagement_id: docRow.engagement_id || null,
     title: docRow.title,
     document_type: docRow.document_type as DocumentType,
     status: docRow.status as DocumentStatus,
@@ -534,14 +965,15 @@ export function createDbNotification(params: {
   title: string;
   message: string;
   documentId?: string;
+  engagementId?: string;
 }) {
   const db = getDb();
-  const id = params.id || require('crypto').randomUUID();
+  const id = params.id || crypto.randomUUID();
   const now = new Date().toISOString();
   db.prepare(`
-    INSERT INTO notifications (id, recipient_id, type, title, message, document_id, read, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-  `).run(id, params.recipientId, params.type, params.title, params.message, params.documentId || null, now);
+    INSERT INTO notifications (id, recipient_id, type, title, message, document_id, engagement_id, read, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+  `).run(id, params.recipientId, params.type, params.title, params.message, params.documentId || null, params.engagementId || null, now);
 }
 
 export function getDbNotifications(recipientId: string) {
@@ -574,7 +1006,7 @@ export function saveDbExtractedData(data: {
   confidenceScore?: number;
 }) {
   const db = getDb();
-  const id = require('crypto').randomUUID();
+  const id = crypto.randomUUID();
   const now = new Date().toISOString();
   db.prepare(`
     INSERT OR REPLACE INTO extracted_document_data 
@@ -613,9 +1045,581 @@ export function getDbExtractedData(versionId: string) {
   };
 }
 
+// ================= CA Engagements Repository =================
+
+export function getAllEngagements(filters?: {
+  clientId?: string;
+  status?: EngagementStatus;
+  serviceType?: string;
+  search?: string;
+}): Engagement[] {
+  const db = getDb();
+  let query = `
+    SELECT e.*, c.name as client_name, c.email as client_email, c.company_name as client_company_name, c.financial_year as client_financial_year
+    FROM engagements e
+    JOIN clients c ON e.client_id = c.id
+    WHERE 1=1
+  `;
+  const params: unknown[] = [];
+
+  if (filters?.clientId) {
+    query += ' AND e.client_id = ?';
+    params.push(filters.clientId);
+  }
+  if (filters?.status) {
+    query += ' AND e.status = ?';
+    params.push(filters.status);
+  }
+  if (filters?.serviceType) {
+    query += ' AND e.service_type = ?';
+    params.push(filters.serviceType);
+  }
+  if (filters?.search) {
+    query += ' AND (e.title LIKE ? OR c.name LIKE ? OR c.company_name LIKE ?)';
+    const s = `%${filters.search}%`;
+    params.push(s, s, s);
+  }
+
+  query += ' ORDER BY e.updated_at DESC';
+
+  const rows = db.prepare(query).all(...params) as any[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    client_id: row.client_id,
+    title: row.title,
+    service_type: row.service_type as EngagementServiceType,
+    financial_year: row.financial_year,
+    status: row.status as EngagementStatus,
+    current_stage_index: row.current_stage_index,
+    total_stages: row.total_stages,
+    progress_percent: row.progress_percent,
+    due_date: row.due_date,
+    assigned_partner_id: row.assigned_partner_id,
+    assigned_partner_name: row.assigned_partner_name,
+    assigned_manager_id: row.assigned_manager_id,
+    assigned_manager_name: row.assigned_manager_name,
+    assigned_staff_id: row.assigned_staff_id,
+    assigned_staff_name: row.assigned_staff_name,
+    billing_amount: row.billing_amount,
+    billing_gst: row.billing_gst,
+    billing_total: row.billing_total,
+    billing_status: row.billing_status,
+    payment_reference: row.payment_reference,
+    paid_at: row.paid_at,
+    closure_id: row.closure_id,
+    closed_at: row.closed_at,
+    closed_by_id: row.closed_by_id,
+    closed_by_name: row.closed_by_name,
+    closure_summary: row.closure_summary,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    client: {
+      id: row.client_id,
+      name: row.client_name,
+      email: row.client_email,
+      company_name: row.client_company_name,
+      financial_year: row.client_financial_year,
+      created_at: '',
+      updated_at: '',
+    },
+  }));
+}
+
+export function getEngagementById(id: string): Engagement | null {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT e.*, c.name as client_name, c.email as client_email, c.company_name as client_company_name, c.financial_year as client_financial_year
+    FROM engagements e
+    JOIN clients c ON e.client_id = c.id
+    WHERE e.id = ?
+  `).get(id) as any;
+
+  if (!row) return null;
+
+  const stages = db.prepare(`
+    SELECT * FROM engagement_stages WHERE engagement_id = ? ORDER BY stage_number ASC
+  `).all(id) as EngagementStage[];
+
+  const checklistRows = db.prepare(`
+    SELECT c.*, d.title as doc_title, d.status as doc_status, d.current_version as doc_version
+    FROM engagement_checklists c
+    LEFT JOIN documents d ON c.document_id = d.id
+    WHERE c.engagement_id = ?
+    ORDER BY c.rowid ASC
+  `).all(id) as any[];
+
+  const checklists: EngagementChecklistItem[] = checklistRows.map((c) => ({
+    id: c.id,
+    engagement_id: c.engagement_id,
+    title: c.title,
+    category: c.category,
+    is_mandatory: Boolean(c.is_mandatory),
+    status: c.status,
+    document_id: c.document_id,
+    request_message: c.request_message,
+    requested_at: c.requested_at,
+    due_date: c.due_date,
+    matched_document: c.document_id
+      ? {
+          id: c.document_id,
+          client_id: row.client_id,
+          title: c.doc_title || c.title,
+          status: c.doc_status || 'SUBMITTED',
+          current_version: c.doc_version || 1,
+          document_type: 'OTHER',
+          assigned_to: null,
+          created_at: '',
+          updated_at: '',
+        }
+      : undefined,
+  }));
+
+  const tasks = db.prepare(`
+    SELECT * FROM engagement_tasks WHERE engagement_id = ? ORDER BY created_at DESC
+  `).all(id) as EngagementTask[];
+
+  const approvals = db.prepare(`
+    SELECT * FROM engagement_approvals 
+    WHERE engagement_id = ? 
+    ORDER BY CASE role_gate WHEN 'PERFORMER' THEN 1 WHEN 'REVIEWER' THEN 2 WHEN 'PARTNER' THEN 3 END ASC
+  `).all(id) as EngagementApproval[];
+
+  // Linked documents (both explicitly tagged or matched via checklist)
+  const documents = getDocuments({ clientId: row.client_id }).filter(
+    (d) => d.engagement_id === id || checklists.some((c) => c.document_id === d.id)
+  );
+
+  // Unified Audit Trail for this engagement
+  const auditLogs = getEngagementAuditLogs(id);
+
+  return {
+    id: row.id,
+    client_id: row.client_id,
+    title: row.title,
+    service_type: row.service_type as EngagementServiceType,
+    financial_year: row.financial_year,
+    status: row.status as EngagementStatus,
+    current_stage_index: row.current_stage_index,
+    total_stages: row.total_stages,
+    progress_percent: row.progress_percent,
+    due_date: row.due_date,
+    assigned_partner_id: row.assigned_partner_id,
+    assigned_partner_name: row.assigned_partner_name,
+    assigned_manager_id: row.assigned_manager_id,
+    assigned_manager_name: row.assigned_manager_name,
+    assigned_staff_id: row.assigned_staff_id,
+    assigned_staff_name: row.assigned_staff_name,
+    billing_amount: row.billing_amount,
+    billing_gst: row.billing_gst,
+    billing_total: row.billing_total,
+    billing_status: row.billing_status,
+    payment_reference: row.payment_reference,
+    paid_at: row.paid_at,
+    closure_id: row.closure_id,
+    closed_at: row.closed_at,
+    closed_by_id: row.closed_by_id,
+    closed_by_name: row.closed_by_name,
+    closure_summary: row.closure_summary,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    client: {
+      id: row.client_id,
+      name: row.client_name,
+      email: row.client_email,
+      company_name: row.client_company_name,
+      financial_year: row.client_financial_year,
+      created_at: '',
+      updated_at: '',
+    },
+    stages,
+    checklists,
+    tasks,
+    approvals,
+    documents,
+    audit_logs: auditLogs,
+  };
+}
+
+export function createDbEngagement(data: Partial<Engagement>): Engagement {
+  const db = getDb();
+  const id = data.id || `eng-${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO engagements (
+      id, client_id, title, service_type, financial_year, status,
+      current_stage_index, total_stages, progress_percent, due_date,
+      assigned_partner_id, assigned_partner_name,
+      assigned_manager_id, assigned_manager_name,
+      assigned_staff_id, assigned_staff_name,
+      billing_amount, billing_gst, billing_total, billing_status,
+      payment_reference, paid_at,
+      closure_id, closed_at, closed_by_id, closed_by_name, closure_summary,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?, ?, ?, ?,
+      ?, ?
+    )
+  `).run(
+    id,
+    data.client_id,
+    data.title,
+    data.service_type || 'STATUTORY_AUDIT',
+    data.financial_year || '2025-26',
+    data.status || 'PLANNING',
+    data.current_stage_index || 0,
+    data.total_stages || 10,
+    data.progress_percent || 0,
+    data.due_date || new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0],
+    data.assigned_partner_id || null,
+    data.assigned_partner_name || null,
+    data.assigned_manager_id || null,
+    data.assigned_manager_name || null,
+    data.assigned_staff_id || null,
+    data.assigned_staff_name || null,
+    data.billing_amount || 0,
+    data.billing_gst || 0,
+    data.billing_total || 0,
+    data.billing_status || 'PENDING',
+    data.payment_reference || null,
+    data.paid_at || null,
+    data.closure_id || null,
+    data.closed_at || null,
+    data.closed_by_id || null,
+    data.closed_by_name || null,
+    data.closure_summary || null,
+    now,
+    now
+  );
+
+  return getEngagementById(id)!;
+}
+
+export function updateDbEngagement(id: string, updates: Partial<Engagement>): Engagement | null {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  const allowedKeys: (keyof Engagement)[] = [
+    'title',
+    'status',
+    'current_stage_index',
+    'total_stages',
+    'progress_percent',
+    'due_date',
+    'assigned_partner_id',
+    'assigned_partner_name',
+    'assigned_manager_id',
+    'assigned_manager_name',
+    'assigned_staff_id',
+    'assigned_staff_name',
+    'billing_amount',
+    'billing_gst',
+    'billing_total',
+    'billing_status',
+    'payment_reference',
+    'paid_at',
+    'closure_id',
+    'closed_at',
+    'closed_by_id',
+    'closed_by_name',
+    'closure_summary',
+  ];
+
+  for (const key of allowedKeys) {
+    if (updates[key] !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+  }
+
+  if (fields.length === 0) {
+    return getEngagementById(id);
+  }
+
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
+  values.push(id);
+
+  db.prepare(`UPDATE engagements SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  return getEngagementById(id);
+}
+
+export function getEngagementStages(engagementId: string): EngagementStage[] {
+  const db = getDb();
+  return db.prepare('SELECT * FROM engagement_stages WHERE engagement_id = ? ORDER BY stage_number ASC').all(engagementId) as EngagementStage[];
+}
+
+export function updateEngagementStage(
+  engagementId: string,
+  stageNumber: number,
+  updates: Partial<EngagementStage>
+): EngagementStage | null {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.completed_at !== undefined) {
+    fields.push('completed_at = ?');
+    values.push(updates.completed_at);
+  }
+  if (updates.owner_id !== undefined) {
+    fields.push('owner_id = ?');
+    values.push(updates.owner_id);
+  }
+  if (updates.owner_name !== undefined) {
+    fields.push('owner_name = ?');
+    values.push(updates.owner_name);
+  }
+  if (updates.notes !== undefined) {
+    fields.push('notes = ?');
+    values.push(updates.notes);
+  }
+
+  if (fields.length > 0) {
+    values.push(engagementId, stageNumber);
+    db.prepare(`UPDATE engagement_stages SET ${fields.join(', ')} WHERE engagement_id = ? AND stage_number = ?`).run(...values);
+  }
+
+  return db.prepare('SELECT * FROM engagement_stages WHERE engagement_id = ? AND stage_number = ?').get(engagementId, stageNumber) as EngagementStage || null;
+}
+
+export function getEngagementChecklist(engagementId: string): EngagementChecklistItem[] {
+  const db = getDb();
+  return db.prepare('SELECT * FROM engagement_checklists WHERE engagement_id = ? ORDER BY rowid ASC').all(engagementId) as EngagementChecklistItem[];
+}
+
+export function updateEngagementChecklistItem(
+  itemId: string,
+  updates: Partial<EngagementChecklistItem>
+): EngagementChecklistItem | null {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.document_id !== undefined) {
+    fields.push('document_id = ?');
+    values.push(updates.document_id);
+  }
+  if (updates.request_message !== undefined) {
+    fields.push('request_message = ?');
+    values.push(updates.request_message);
+  }
+  if (updates.requested_at !== undefined) {
+    fields.push('requested_at = ?');
+    values.push(updates.requested_at);
+  }
+  if (updates.due_date !== undefined) {
+    fields.push('due_date = ?');
+    values.push(updates.due_date);
+  }
+
+  if (fields.length > 0) {
+    values.push(itemId);
+    db.prepare(`UPDATE engagement_checklists SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  }
+
+  return db.prepare('SELECT * FROM engagement_checklists WHERE id = ?').get(itemId) as EngagementChecklistItem || null;
+}
+
+export function getEngagementTasks(engagementId: string): EngagementTask[] {
+  const db = getDb();
+  return db.prepare('SELECT * FROM engagement_tasks WHERE engagement_id = ? ORDER BY created_at DESC').all(engagementId) as EngagementTask[];
+}
+
+export function createEngagementTask(task: Partial<EngagementTask>): EngagementTask {
+  const db = getDb();
+  const id = task.id || `tsk-${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO engagement_tasks (
+      id, engagement_id, title, stage_number, assigned_to, assigned_to_name,
+      status, priority, due_date, blocker_reason, blocked_by, completed_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    task.engagement_id,
+    task.title,
+    task.stage_number || 1,
+    task.assigned_to || null,
+    task.assigned_to_name || null,
+    task.status || 'TODO',
+    task.priority || 'MEDIUM',
+    task.due_date || null,
+    task.blocker_reason || null,
+    task.blocked_by || null,
+    task.completed_at || null,
+    now
+  );
+
+  return db.prepare('SELECT * FROM engagement_tasks WHERE id = ?').get(id) as EngagementTask;
+}
+
+export function updateEngagementTask(
+  taskId: string,
+  updates: Partial<EngagementTask>
+): EngagementTask | null {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  const keys: (keyof EngagementTask)[] = [
+    'title',
+    'status',
+    'priority',
+    'due_date',
+    'blocker_reason',
+    'blocked_by',
+    'completed_at',
+    'assigned_to',
+    'assigned_to_name',
+  ];
+
+  for (const k of keys) {
+    if (updates[k] !== undefined) {
+      fields.push(`${k} = ?`);
+      values.push(updates[k]);
+    }
+  }
+
+  if (fields.length > 0) {
+    values.push(taskId);
+    db.prepare(`UPDATE engagement_tasks SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+  }
+
+  return db.prepare('SELECT * FROM engagement_tasks WHERE id = ?').get(taskId) as EngagementTask || null;
+}
+
+export function getEngagementApprovals(engagementId: string): EngagementApproval[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT * FROM engagement_approvals 
+    WHERE engagement_id = ? 
+    ORDER BY CASE role_gate WHEN 'PERFORMER' THEN 1 WHEN 'REVIEWER' THEN 2 WHEN 'PARTNER' THEN 3 END ASC
+  `).all(engagementId) as EngagementApproval[];
+}
+
+export function updateEngagementApproval(
+  engagementId: string,
+  roleGate: 'PERFORMER' | 'REVIEWER' | 'PARTNER',
+  updates: Partial<EngagementApproval>
+): EngagementApproval | null {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.remarks !== undefined) {
+    fields.push('remarks = ?');
+    values.push(updates.remarks);
+  }
+  if (updates.approved_at !== undefined) {
+    fields.push('approved_at = ?');
+    values.push(updates.approved_at);
+  }
+  if (updates.approver_id !== undefined) {
+    fields.push('approver_id = ?');
+    values.push(updates.approver_id);
+  }
+  if (updates.approver_name !== undefined) {
+    fields.push('approver_name = ?');
+    values.push(updates.approver_name);
+  }
+
+  if (fields.length > 0) {
+    values.push(engagementId, roleGate);
+    db.prepare(`UPDATE engagement_approvals SET ${fields.join(', ')} WHERE engagement_id = ? AND role_gate = ?`).run(...values);
+  }
+
+  return db.prepare('SELECT * FROM engagement_approvals WHERE engagement_id = ? AND role_gate = ?').get(engagementId, roleGate) as EngagementApproval || null;
+}
+
+export function getEngagementAuditLogs(engagementId: string): AuditLog[] {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT a.*, u.name as actor_name, u.role as actor_role
+    FROM audit_logs a
+    LEFT JOIN users u ON a.actor_id = u.id
+    WHERE a.engagement_id = ? 
+       OR a.document_id IN (SELECT id FROM documents WHERE engagement_id = ?)
+    ORDER BY a.created_at ASC
+  `).all(engagementId, engagementId) as any[];
+
+  return rows.map((a) => {
+    let meta = {};
+    try {
+      meta = JSON.parse(a.metadata);
+    } catch {
+      meta = {};
+    }
+    return {
+      id: a.id,
+      document_id: a.document_id,
+      engagement_id: a.engagement_id || undefined,
+      actor_id: a.actor_id,
+      actor_name: a.actor_name,
+      actor_role: a.actor_role,
+      action: a.action,
+      metadata: meta,
+      created_at: a.created_at,
+    };
+  });
+}
+
+export function insertAuditLog(log: {
+  id?: string;
+  document_id?: string | null;
+  engagement_id?: string | null;
+  actor_id: string;
+  action: string;
+  metadata: Record<string, any>;
+  created_at?: string;
+}) {
+  const db = getDb();
+  const id = log.id || crypto.randomUUID();
+  const now = log.created_at || new Date().toISOString();
+  db.prepare(`
+    INSERT INTO audit_logs (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    log.document_id || null,
+    log.engagement_id || null,
+    log.actor_id,
+    log.action,
+    JSON.stringify(log.metadata || {}),
+    now
+  );
+}
+
 export function resetDatabase() {
   const db = getDb();
   db.exec(`
+    DELETE FROM engagement_approvals;
+    DELETE FROM engagement_tasks;
+    DELETE FROM engagement_checklists;
+    DELETE FROM engagement_stages;
+    DELETE FROM engagements;
     DELETE FROM audit_logs;
     DELETE FROM reviews;
     DELETE FROM document_versions;
@@ -626,11 +1630,17 @@ export function resetDatabase() {
     DELETE FROM clients;
   `);
   seedData(db);
+  seedEngagements(db);
 }
 
 export function clearDocumentsOnly() {
   const db = getDb();
   db.exec(`
+    DELETE FROM engagement_approvals;
+    DELETE FROM engagement_tasks;
+    DELETE FROM engagement_checklists;
+    DELETE FROM engagement_stages;
+    DELETE FROM engagements;
     DELETE FROM audit_logs;
     DELETE FROM reviews;
     DELETE FROM document_versions;
@@ -638,5 +1648,5 @@ export function clearDocumentsOnly() {
     DELETE FROM notifications;
     DELETE FROM extracted_document_data;
   `);
+  seedEngagements(db);
 }
-
