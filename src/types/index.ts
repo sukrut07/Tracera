@@ -121,3 +121,16 @@ export interface DashboardStats {
   approved_today: number;
   approved_total: number;
 }
+
+export interface Notification {
+  id: string;
+  recipient_id: string;
+  type: string;
+  title: string;
+  message: string;
+  document_id?: string;
+  read?: boolean | number;
+  is_read?: boolean;
+  link_url?: string;
+  created_at: string;
+}

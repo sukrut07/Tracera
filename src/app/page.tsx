@@ -2,7 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/session';
 import { Logo } from '@/components/shared/Logo';
-import { HeroWorkflowMotion } from '@/components/landing/HeroWorkflowMotion';
+import { InteractiveWorkflowDemo } from '@/components/landing/InteractiveWorkflowDemo';
+import { InteractiveProductPreview } from '@/components/landing/InteractiveProductPreview';
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
   Users,
   Eye,
   Check,
+  ChevronRight,
 } from 'lucide-react';
 
 export default async function LandingPage() {
@@ -41,6 +43,9 @@ export default async function LandingPage() {
             </a>
             <a href="#workflow" className="hover:text-[#111110] transition-colors">
               Workflow
+            </a>
+            <a href="#preview" className="hover:text-[#111110] transition-colors">
+              Product Preview
             </a>
             <a href="#capabilities" className="hover:text-[#111110] transition-colors">
               Capabilities
@@ -85,7 +90,17 @@ export default async function LandingPage() {
 
       {/* 2. Hero Section */}
       <section className="relative pt-20 pb-20 border-b border-[#E5E5E0] bg-subtle-grid">
-        <div className="max-w-5xl mx-auto px-6 text-center">
+        {/* Subtle decorative architectural trace-line */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-35">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="20%" x2="100%" y2="20%" stroke="#D5D5CF" strokeWidth="0.5" strokeDasharray="4 8" />
+            <line x1="0" y1="80%" x2="100%" y2="80%" stroke="#D5D5CF" strokeWidth="0.5" strokeDasharray="4 8" />
+            <line x1="25%" y1="0" x2="25%" y2="100%" stroke="#D5D5CF" strokeWidth="0.5" strokeDasharray="4 8" />
+            <line x1="75%" y1="0" x2="75%" y2="100%" stroke="#D5D5CF" strokeWidth="0.5" strokeDasharray="4 8" />
+          </svg>
+        </div>
+
+        <div className="relative max-w-6xl mx-auto px-6 text-center">
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E5E5E0] text-[10px] font-mono font-bold uppercase tracking-widest text-[#111110] mb-6">
             <span className="w-1.5 h-1.5 bg-[#E03E1A]" />
@@ -123,8 +138,8 @@ export default async function LandingPage() {
             </a>
           </div>
 
-          {/* Hero Visual: Interactive Product Motion Loop */}
-          <HeroWorkflowMotion />
+          {/* Hero Visual: Interactive 5-Stage Workflow Demonstrator */}
+          <InteractiveWorkflowDemo />
         </div>
       </section>
 
@@ -197,60 +212,65 @@ export default async function LandingPage() {
             })}
           </div>
 
-          {/* Transition to TRACERA banner */}
-          <div className="mt-8 border border-[#111110] bg-[#111110] text-[#FAFAF8] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-1">
-                THE SOLUTION
-              </span>
-              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
-                One unified, traceable audit system.
-              </h3>
-              <p className="text-xs text-[#A1A19A] mt-1">
-                Every document submitted, reviewed, corrected, and approved in a single state machine.
-              </p>
-            </div>
+          {/* Connected Flow Diagram: 5 Broken Tools -> TRACERA */}
+          <div className="mt-8 border border-[#E5E5E0] bg-[#FAFAF8] p-6 sm:p-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold block">
+                  FROM CHAOS TO STRUCTURE
+                </span>
+                <h3 className="text-base sm:text-lg font-bold text-[#111110]">
+                  Replace disconnected channels with a single immutable audit state machine.
+                </h3>
+              </div>
 
-            <Link
-              href="/login"
-              className="px-5 py-2.5 bg-[#FAFAF8] hover:bg-white text-[#111110] text-xs font-mono uppercase tracking-widest font-bold shrink-0 transition-colors"
-            >
-              Experience TRACERA →
-            </Link>
+              {/* Connected pills */}
+              <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-xs">
+                <span className="px-2.5 py-1 bg-white border border-[#E5E5E0] line-through text-[#888880]">WhatsApp</span>
+                <span>+</span>
+                <span className="px-2.5 py-1 bg-white border border-[#E5E5E0] line-through text-[#888880]">Excel</span>
+                <span>+</span>
+                <span className="px-2.5 py-1 bg-white border border-[#E5E5E0] line-through text-[#888880]">Email</span>
+                <span>+</span>
+                <span className="px-2.5 py-1 bg-white border border-[#E5E5E0] line-through text-[#888880]">Drive</span>
+                <ArrowRight className="w-4 h-4 text-[#E03E1A]" />
+                <span className="px-3 py-1 bg-[#111110] text-white font-bold">TRACERA</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 4. Editorial Workflow Section */}
+      {/* 4. Editorial 6-Step Lifecycle Section */}
       <section id="workflow" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="max-w-3xl mb-16">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
-              THE 5-STEP LIFECYCLE
+              THE 6-STEP EDITORIAL LIFECYCLE
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
               How TRACERA Works
             </h2>
             <p className="text-sm text-[#666660] mt-3">
-              An editorial progression designed around the genuine statutory review cycle of Chartered Accountants.
+              An editorial progression modeled directly on the statutory review workflow of Chartered Accountants.
             </p>
           </div>
 
-          {/* Editorial Numbered Timeline */}
+          {/* Numbered Editorial Timeline */}
           <div className="border border-[#E5E5E0] bg-white divide-y divide-[#E5E5E0]">
             {[
               {
                 num: '01',
-                title: 'UPLOAD',
-                subtitle: 'Client submits the source document',
-                desc: 'Client uploads Bank Statements, Purchase Registers, GST Returns, or Tax Invoices. Document is immutably registered as Version 1 in SUBMITTED status.',
-                meta: 'Preserves original raw file · Generates OCR preview · Auto-assigns engagement auditor',
+                title: 'COLLECT',
+                subtitle: 'Client submits the source audit document',
+                desc: 'Client uploads Bank Statements, Purchase Registers, GST Returns, or Invoices. The document is immutably registered as Version 1 in SUBMITTED status.',
+                meta: 'Original raw file preserved · Secure storage · Auto-notifies engagement auditor',
               },
               {
                 num: '02',
                 title: 'REVIEW',
                 subtitle: 'Auditor examines the exact version',
-                desc: 'Auditor opens the split-screen Review Workspace. Verifies line-by-line totals against ICEGATE/GST portal with the 4-point CA statutory verification checklist.',
+                desc: 'Auditor opens the split-screen Review Workspace. Line items are verified against ICEGATE / GST portal data using the 4-point CA statutory verification checklist.',
                 meta: 'State transitions to UNDER_REVIEW · Logs reviewer name & start timestamp',
               },
               {
@@ -262,16 +282,23 @@ export default async function LandingPage() {
               },
               {
                 num: '04',
-                title: 'APPROVE',
-                subtitle: 'Auditor approves the final reconciled version',
-                desc: 'Client uploads Version 2 (previous version is safely preserved). Auditor confirms the reconciliation and issues official statutory sign-off.',
-                meta: 'State transitions to APPROVED · Document is permanently locked against changes',
+                title: 'RESUBMIT',
+                subtitle: 'Client uploads Version 2 with discrepancies resolved',
+                desc: 'Client uploads revised document (Version 2). TRACERA retains Version 1 completely intact for reference comparison and statutory reconciliation.',
+                meta: 'Version 2 created · Version 1 archived immutably · State transitions back to SUBMITTED',
               },
               {
                 num: '05',
+                title: 'APPROVE',
+                subtitle: 'Auditor approves the final reconciled version',
+                desc: 'Auditor re-verifies the amended ledger against portal totals, marks all 4 checklist points complete, and issues statutory certification sign-off.',
+                meta: 'State transitions to APPROVED · Document is permanently locked against modifications',
+              },
+              {
+                num: '06',
                 title: 'TRACE',
                 subtitle: 'Every action remains recorded forever',
-                desc: 'Complete chronological history generated in compliance with Section 143(3). One click exports the official CA Audit Verification Report as a signed PDF.',
+                desc: 'Complete chronological history generated in compliance with Section 143(3). One click exports the official CA Audit Verification Report as a certified PDF.',
                 meta: 'Tamper-evident chronological log · Actor, role, version & timestamp preserved',
               },
             ].map((step) => (
@@ -309,8 +336,28 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* 5. Asymmetric Capabilities Grid */}
-      <section id="capabilities" className="py-24 border-b border-[#E5E5E0] bg-white">
+      {/* 5. Live Interactive Product Preview (3 Tabs) */}
+      <section id="preview" className="py-24 border-b border-[#E5E5E0] bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mb-16">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
+              LIVE PRODUCT PREVIEW
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111110]">
+              Built for precision. Tailored for practice.
+            </h2>
+            <p className="text-sm text-[#666660] mt-3">
+              Explore the dedicated interfaces built specifically for client submissions, auditor review queues, and statutory verification.
+            </p>
+          </div>
+
+          {/* 3-Tab Component */}
+          <InteractiveProductPreview />
+        </div>
+      </section>
+
+      {/* 6. Asymmetric Capabilities Grid */}
+      <section id="capabilities" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="max-w-3xl mb-16">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
@@ -326,7 +373,7 @@ export default async function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Big feature card 1 */}
-            <div className="md:col-span-2 border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+            <div className="md:col-span-2 border border-[#E5E5E0] bg-white p-8 space-y-4">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
                 CORE CAPABILITY
               </span>
@@ -350,7 +397,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Feature card 2 */}
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+            <div className="border border-[#E5E5E0] bg-white p-8 space-y-4">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
                 STATUTORY COMPLIANCE
               </span>
@@ -366,7 +413,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Feature card 3 */}
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+            <div className="border border-[#E5E5E0] bg-white p-8 space-y-4">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
                 AUDITOR WORKSPACE
               </span>
@@ -379,7 +426,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Feature card 4 */}
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+            <div className="border border-[#E5E5E0] bg-white p-8 space-y-4">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
                 CLIENT EXPERIENCE
               </span>
@@ -392,7 +439,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Feature card 5 */}
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-8 space-y-4">
+            <div className="border border-[#E5E5E0] bg-white p-8 space-y-4">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#777770] font-bold">
                 SECURITY & ISOLATION
               </span>
@@ -407,8 +454,8 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* 6. Signature Traceability Section */}
-      <section id="traceability" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
+      {/* 7. Signature Traceability Section */}
+      <section id="traceability" className="py-24 border-b border-[#E5E5E0] bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="max-w-3xl mb-16">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
@@ -423,7 +470,7 @@ export default async function LandingPage() {
           </div>
 
           {/* Visual Audit Trail Mockup */}
-          <div className="max-w-4xl mx-auto border border-[#E5E5E0] bg-white p-6 sm:p-10 font-mono">
+          <div className="max-w-4xl mx-auto border border-[#E5E5E0] bg-[#FAFAF8] p-6 sm:p-10 font-mono">
             <div className="border-b border-[#E5E5E0] pb-4 mb-6 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase text-[#777770] tracking-widest block">
@@ -502,8 +549,8 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* 7. Security Section */}
-      <section id="security" className="py-24 border-b border-[#E5E5E0] bg-white">
+      {/* 8. Security Section */}
+      <section id="security" className="py-24 border-b border-[#E5E5E0] bg-[#FAFAF8]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="max-w-3xl mb-16">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block mb-2">
@@ -518,7 +565,7 @@ export default async function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+            <div className="border border-[#E5E5E0] bg-white p-6 space-y-2">
               <span className="text-xs font-bold text-[#111110] block">
                 01 / Role-Based Access Control (RBAC)
               </span>
@@ -527,16 +574,16 @@ export default async function LandingPage() {
               </p>
             </div>
 
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+            <div className="border border-[#E5E5E0] bg-white p-6 space-y-2">
               <span className="text-xs font-bold text-[#111110] block">
-                02 / Firebase Storage Isolation
+                02 / Immutability by Design
               </span>
               <p className="text-[#666660] font-sans">
-                Files are segregated per document ID and version number. Files are never overwritten or deleted.
+                Files are segregated per document ID and version number. Prior revisions are never overwritten or deleted.
               </p>
             </div>
 
-            <div className="border border-[#E5E5E0] bg-[#FAFAF8] p-6 space-y-2">
+            <div className="border border-[#E5E5E0] bg-white p-6 space-y-2">
               <span className="text-xs font-bold text-[#111110] block">
                 03 / Strict State Machine Enforcement
               </span>
@@ -548,7 +595,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* 8. Final CTA Section */}
+      {/* 9. Final CTA Section */}
       <section className="py-24 bg-[#111110] text-[#FAFAF8]">
         <div className="max-w-5xl mx-auto px-6 text-center space-y-6">
           <span className="text-[11px] font-mono uppercase tracking-widest text-[#E03E1A] font-bold block">
@@ -561,7 +608,7 @@ export default async function LandingPage() {
             Bring documents, reviews, corrections and approvals into one structured workflow.
           </p>
 
-          <div className="pt-4">
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-[#FAFAF8] hover:bg-white text-[#111110] text-xs font-mono uppercase tracking-widest font-bold transition-colors shadow-xs"
@@ -569,11 +616,18 @@ export default async function LandingPage() {
               <span>Get started with TRACERA</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
+
+            <Link
+              href="/admin/evaluation-tools"
+              className="inline-flex items-center gap-2 px-6 py-4 bg-transparent hover:bg-white/10 text-white border border-white/20 text-xs font-mono uppercase tracking-widest font-bold transition-colors"
+            >
+              <span>Evaluation Workspace</span>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* 9. Minimal Editorial Footer */}
+      {/* 10. Minimal Editorial Footer */}
       <footer className="border-t border-[#E5E5E0] bg-white py-12">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           <div className="space-y-2">
@@ -586,6 +640,7 @@ export default async function LandingPage() {
           <div className="flex flex-wrap gap-8 text-xs font-mono text-[#666660]">
             <a href="#problem" className="hover:text-[#111110]">Problem</a>
             <a href="#workflow" className="hover:text-[#111110]">Workflow</a>
+            <a href="#preview" className="hover:text-[#111110]">Preview</a>
             <a href="#capabilities" className="hover:text-[#111110]">Capabilities</a>
             <a href="#security" className="hover:text-[#111110]">Security</a>
             <Link href="/login" className="hover:text-[#111110]">Sign In</Link>
