@@ -1,6 +1,4 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
-import { getStorage } from 'firebase-admin/storage';
+// Dynamic lazy-loaded Firebase Admin helpers to avoid Node 24 ESM ERR_REQUIRE_ESM crashes
 
 export const isFirebaseAdminConfigured = Boolean(
   process.env.FIREBASE_ADMIN_PROJECT_ID &&
@@ -9,10 +7,19 @@ export const isFirebaseAdminConfigured = Boolean(
   !process.env.FIREBASE_ADMIN_PROJECT_ID.includes('placeholder')
 );
 
-let adminApp: App | undefined;
+let adminApp: any = null;
 
-if (isFirebaseAdminConfigured && !getApps().length) {
+export async function getFirebaseAdminApp() {
+  if (adminApp) return adminApp;
+  if (!isFirebaseAdminConfigured) return null;
+
   try {
+    const { getApps, initializeApp, cert } = await import('firebase-admin/app');
+    if (getApps().length) {
+      adminApp = getApps()[0];
+      return adminApp;
+    }
+
     const rawKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
     const privateKey = rawKey.includes('\\n') ? rawKey.replace(/\\n/g, '\n') : rawKey;
     adminApp = initializeApp({
@@ -23,24 +30,48 @@ if (isFirebaseAdminConfigured && !getApps().length) {
       }),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
+    return adminApp;
   } catch (err) {
-    console.warn('Firebase Admin initialization skipped:', err);
+    console.warn('Firebase Admin dynamic initialization notice:', err);
+    return null;
   }
-} else if (getApps().length) {
-  adminApp = getApps()[0];
 }
 
-export { adminApp, getAuth, getStorage };
+export { adminApp };
+
+export function getAuth(app?: any) {
+  try {
+    const { getAuth: fbGetAuth } = require('firebase-admin/auth');
+    return fbGetAuth(app || adminApp);
+  } catch (err) {
+    console.warn('getAuth notice:', err);
+    return null;
+  }
+}
+
+export function getStorage(app?: any) {
+  try {
+    const { getStorage: fbGetStorage } = require('firebase-admin/storage');
+    return fbGetStorage(app || adminApp);
+  } catch (err) {
+    console.warn('getStorage notice:', err);
+    return null;
+  }
+}
 
 /**
  * Verify Firebase ID token and retrieve user
  */
-export async function verifyFirebaseIdToken(token: string): Promise<DecodedIdToken | null> {
-  if (!isFirebaseAdminConfigured || !adminApp) {
+export async function verifyFirebaseIdToken(token: string): Promise<{ email?: string; uid?: string } | null> {
+  if (!isFirebaseAdminConfigured || !token) {
     return null;
   }
   try {
-    const auth = getAuth(adminApp);
+    const app = await getFirebaseAdminApp();
+    if (!app) return null;
+
+    const { getAuth: fbGetAuth } = await import('firebase-admin/auth');
+    const auth = fbGetAuth(app);
     return await auth.verifyIdToken(token);
   } catch (err) {
     console.warn('Firebase token verification error:', err);

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       if (!decoded?.email || decoded.email.toLowerCase() !== cleanEmail) {
         return NextResponse.json({ error: 'Invalid authentication token.' }, { status: 401 });
       }
-      firebaseUid = decoded.uid;
+      firebaseUid = decoded.uid || null;
     }
 
     const db = getDb();
