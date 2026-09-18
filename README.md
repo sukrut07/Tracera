@@ -2,6 +2,13 @@
 
 > A calm, precise, document-centric audit workflow platform engineered for Chartered Accountant (CA) firms to collect, review, correct, and certify client financial records with an immutable Section 143(3) audit trail.
 
+[![Production](https://img.shields.io/badge/Deployment-Live%20on%20Vercel-success?style=flat&logo=vercel)](https://tracera-teal.vercel.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16.3.5%20(Turbopack)-black?style=flat&logo=next.js)](https://nextjs.org/)
+[![Tests](https://img.shields.io/badge/Test%20Suites-100%25%20Passing-brightgreen?style=flat)]()
+
+**Live Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)
+
 ---
 
 ## Overview
@@ -292,5 +299,6 @@ All test datasets use public synthetic benchmarks:
 
 ## Repository & License
 
+- **Live Application**: [https://tracera-teal.vercel.app](https://tracera-teal.vercel.app)
 - **GitHub**: [https://github.com/sukrut07/Tracera](https://github.com/sukrut07/Tracera)
 - **License**: MIT
