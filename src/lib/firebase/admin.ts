@@ -13,11 +13,13 @@ let adminApp: App | undefined;
 
 if (isFirebaseAdminConfigured && !getApps().length) {
   try {
+    const rawKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY || '';
+    const privateKey = rawKey.includes('\\n') ? rawKey.replace(/\\n/g, '\n') : rawKey;
     adminApp = initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        privateKey,
       }),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
@@ -34,14 +36,14 @@ export { adminApp, getAuth, getStorage };
  * Verify Firebase ID token and retrieve user
  */
 export async function verifyFirebaseIdToken(token: string): Promise<DecodedIdToken | null> {
-  if (!isFirebaseAdminConfigured) {
+  if (!isFirebaseAdminConfigured || !adminApp) {
     return null;
   }
   try {
-    const auth = getAuth();
+    const auth = getAuth(adminApp);
     return await auth.verifyIdToken(token);
   } catch (err) {
-    console.error('Firebase token verification error:', err);
+    console.warn('Firebase token verification error:', err);
     return null;
   }
 }
