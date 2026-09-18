@@ -26,6 +26,10 @@ export default function ActionRequiredPage() {
     try {
       setLoading(true);
       const res = await fetch('/api/documents');
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         const allDocs: AuditDocument[] = data.documents || [];
@@ -43,19 +47,23 @@ export default function ActionRequiredPage() {
     fetchCorrections();
   }, []);
 
+  if (loading && !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">Loading audit actions...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return null;
+  }
+
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: 'usr-client-001',
-          name: 'Client User',
-          email: 'client@demo.com',
-          role: 'CLIENT',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       <div className="space-y-6 max-w-5xl mx-auto font-sans">
         {/* Header */}
         <div className="border-b-[3px] border-[#0A0A0A] pb-6 flex flex-wrap items-end justify-between gap-4">

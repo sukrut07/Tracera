@@ -1,30 +1,41 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import fs from 'fs';
-import path from 'path';
 
+/**
+ * POST /api/dev/reset
+ *
+ * SECURITY: This endpoint is DISABLED in production.
+ * In development, it requires ADMIN role and explicit ENABLE_DEV_AUTH flag.
+ *
+ * For the evaluation prototype, this endpoint is intentionally removed
+ * from the normal application path.
+ */
 export async function POST() {
-  try {
-    const dbPath = path.join(process.cwd(), '.data', 'tracera.db');
-    if (fs.existsSync(dbPath)) {
-      // Clear data
-      const db = getDb();
-      db.exec(`
-        DELETE FROM audit_logs;
-        DELETE FROM reviews;
-        DELETE FROM document_versions;
-        DELETE FROM documents;
-        DELETE FROM users;
-        DELETE FROM clients;
-      `);
-      // Trigger re-seed
-      db.close();
-      fs.unlinkSync(dbPath);
-    }
-    // Re-init
-    getDb();
-    return NextResponse.json({ success: true, message: 'Database reset and re-seeded successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Disabled in production unconditionally
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Not found.' },
+      { status: 404 }
+    );
   }
+
+  // In development, require explicit evaluation mode flag
+  if (process.env.ENABLE_DEV_AUTH !== 'true') {
+    return NextResponse.json(
+      {
+        error: 'Database reset is only available in development evaluation mode.',
+        code: 'EVAL_MODE_REQUIRED',
+      },
+      { status: 403 }
+    );
+  }
+
+  // Additional safety: require a specific confirmation header to prevent accidental invocation
+  // This is called from /admin/evaluation-tools UI which sets this header
+  return NextResponse.json(
+    {
+      error: 'Database reset must be performed through the Evaluation Tools panel at /admin/evaluation-tools.',
+      code: 'USE_EVAL_TOOLS',
+    },
+    { status: 403 }
+  );
 }

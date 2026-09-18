@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getCurrentUser } from '@/lib/auth/session';
+import { requireRole } from '@/lib/auth/session';
 import { workflowService, WorkflowError } from '@/lib/workflow/service';
 import { SYNTHETIC_SAMPLE_DATASETS } from '@/lib/data/sample-datasets';
+import { getClientById } from '@/lib/db';
 import fs from 'fs/promises';
 import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    // Synthetic fixtures are evaluation-only and must not be exposed in a
+    // deployed workspace, even to ordinary authenticated users.
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_EVALUATION_TOOLS !== 'true') {
+      return NextResponse.json({ error: 'Not found.' }, { status: 404 });
     }
+    const user = await requireRole(['ADMIN']);
 
     const body = await req.json();
     const { fixtureKey, clientId: requestedClientId } = body;
@@ -23,7 +26,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const targetClientId = requestedClientId || user.client_id || 'c1';
+    const targetClientId = requestedClientId;
+    if (!targetClientId || typeof targetClientId !== 'string' || !getClientById(targetClientId)) {
+      return NextResponse.json({ error: 'A valid target client is required.' }, { status: 400 });
+    }
 
     // Write fixture file to public/uploads
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');

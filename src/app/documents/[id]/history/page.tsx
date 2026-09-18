@@ -42,6 +42,10 @@ export default function DocumentHistoryPage({
     try {
       setLoading(true);
       const res = await fetch(`/api/documents/${documentId}`);
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load document');
@@ -62,32 +66,36 @@ export default function DocumentHistoryPage({
 
   if (loading && !document) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 font-sans">
-        <div className="flex flex-col items-center gap-3 text-zinc-500 text-xs">
-          <div className="w-6 h-6 border-2 border-zinc-900 border-t-transparent rounded-full animate-spin" />
-          <span className="font-mono text-[11px] uppercase tracking-wider">Loading Audit Trail & History...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] font-sans">
+        <div className="flex flex-col items-center gap-3 text-[#4A4A48] text-xs">
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">Loading Audit Trail & History...</span>
         </div>
       </div>
     );
   }
 
-  if (error || !document) {
+  if (error || !document || !currentUser) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center font-sans">
-        <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-        <h3 className="text-base font-bold text-zinc-900">Document Unavailable</h3>
-        <p className="text-xs text-zinc-500 mt-1">{error || 'Could not find requested document'}</p>
-        <Link
-          href="/"
-          className="mt-4 inline-block px-4 py-2 bg-zinc-950 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-zinc-800 transition-colors"
-        >
-          Return Home
-        </Link>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] p-4">
+        <div className="max-w-md w-full p-6 bg-white border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] space-y-4">
+          <div className="flex items-center gap-2 text-[#E73520] font-bold">
+            <AlertCircle className="w-5 h-5" />
+            <span>Document Access Restricted</span>
+          </div>
+          <p className="text-xs text-[#555550]">{error || 'Document not found or unauthorized'}</p>
+          <Link
+            href="/client/dashboard"
+            className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-bold inline-block"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const isAuditor = currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN';
+  const isAuditor = currentUser.role === 'AUDITOR' || currentUser.role === 'ADMIN' || currentUser.role === 'PARTNER';
   const backHref = isAuditor ? '/auditor/dashboard' : '/client/dashboard';
 
   const selectedVersion =
@@ -103,7 +111,7 @@ export default function DocumentHistoryPage({
     };
 
   return (
-    <AppShell currentUser={currentUser || { id: '1', name: 'User', email: 'user@demo.com', role: 'CLIENT', client_id: null, created_at: '' }}>
+    <AppShell currentUser={currentUser}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-zinc-200">

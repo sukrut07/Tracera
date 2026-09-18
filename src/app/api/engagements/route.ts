@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       currentUser: user,
     });
   } catch (error: any) {
-    const statusCode = error.name === 'WorkflowError' ? error.statusCode : 500;
+    const statusCode = error?.status || (error.name === 'WorkflowError' ? error.statusCode : 500);
     return NextResponse.json({ error: error.message || 'Failed to list engagements' }, { status: statusCode });
   }
 }

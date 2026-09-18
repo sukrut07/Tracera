@@ -52,6 +52,16 @@ export interface ApproveDocumentParams {
   comment?: string;
 }
 
+function assertAssignedReviewer(user: UserProfile, doc: AuditDocument) {
+  if (user.role === 'ADMIN') return;
+  if (!doc.assigned_to) {
+    throw new WorkflowError(403, 'This document has not been assigned to a reviewer');
+  }
+  if (doc.assigned_to !== user.id) {
+    throw new WorkflowError(403, 'This document is assigned to a different reviewer');
+  }
+}
+
 /**
  * Centralized CA Audit Workflow Engine
  * Guarantees transactional consistency, state machine transitions, and tamper-evident audit logging.
@@ -81,10 +91,16 @@ export const workflowService = {
     const auditId2 = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // Default auditor assignment: Rahul Sharma (demo CA)
-    const defaultAuditor = db.prepare("SELECT id, name FROM users WHERE role = 'AUDITOR' LIMIT 1").get() as any;
-    const auditorId = defaultAuditor?.id || null;
-    const auditorName = defaultAuditor?.name || 'Assigned CA Auditor';
+    // Assignment comes from the client configuration. Do not silently give a
+    // newly submitted file to whichever auditor happens to be first in the DB.
+    const configuredAuditor = db.prepare(`
+      SELECT u.id, u.name
+      FROM clients c
+      JOIN users u ON u.id = c.assigned_auditor
+      WHERE c.id = ? AND u.role = 'AUDITOR'
+    `).get(params.clientId) as { id: string; name: string } | undefined;
+    const auditorId = configuredAuditor?.id || null;
+    const auditorName = configuredAuditor?.name || null;
 
     const transaction = db.transaction(() => {
       // 1. Create document
@@ -111,12 +127,14 @@ export const workflowService = {
 
       // 3. Append-only audit logs
       db.prepare(`
-        INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-        VALUES (?, ?, ?, 'DOCUMENT_UPLOADED', ?, ?)
+        INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, 'DOCUMENT_UPLOADED', ?, ?)
       `).run(
         auditId1,
         docId,
         user.id,
+        user.name,
+        user.role,
         JSON.stringify({
           version: 1,
           file_name: params.fileName,
@@ -128,12 +146,14 @@ export const workflowService = {
 
       if (auditorId) {
         db.prepare(`
-          INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-          VALUES (?, ?, ?, 'DOCUMENT_ASSIGNED', ?, ?)
+          INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+          VALUES (?, ?, ?, ?, ?, 'DOCUMENT_ASSIGNED', ?, ?)
         `).run(
           auditId2,
           docId,
           user.id,
+          user.name,
+          user.role,
           JSON.stringify({
             assigned_to_id: auditorId,
             assigned_to_name: auditorName,
@@ -202,36 +222,45 @@ export const workflowService = {
     const doc = getDocumentById(documentId);
     if (!doc) throw new WorkflowError(404, 'Document not found');
 
+    assertAssignedReviewer(user, doc);
+
     if (doc.status !== 'SUBMITTED' && doc.status !== 'UNDER_REVIEW') {
       throw new WorkflowError(400, `Cannot start review on document in '${doc.status}' status`);
     }
+
+    // The assigned reviewer may repeat this request safely. It must not alter
+    // ownership or add another audit entry.
+    if (doc.status === 'UNDER_REVIEW') return doc;
 
     const db = getDb();
     const now = new Date().toISOString();
     const auditId = crypto.randomUUID();
 
     const transaction = db.transaction(() => {
-      db.prepare(`
+      const update = db.prepare(`
         UPDATE documents 
-        SET status = 'UNDER_REVIEW', assigned_to = ?, updated_at = ?
-        WHERE id = ?
-      `).run(user.id, now, documentId);
-
-      if (doc.status !== 'UNDER_REVIEW') {
-        db.prepare(`
-          INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-          VALUES (?, ?, ?, 'REVIEW_STARTED', ?, ?)
-        `).run(
-          auditId,
-          documentId,
-          user.id,
-          JSON.stringify({
-            version: doc.current_version,
-            reviewer_name: user.name,
-          }),
-          now
-        );
+        SET status = 'UNDER_REVIEW', updated_at = ?
+        WHERE id = ? AND status = 'SUBMITTED' AND (assigned_to = ? OR ? = 1)
+      `).run(now, documentId, user.id, user.role === 'ADMIN' ? 1 : 0);
+      if (update.changes !== 1) {
+        throw new WorkflowError(409, 'Document state or reviewer assignment changed. Refresh and try again.');
       }
+
+      db.prepare(`
+        INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, 'REVIEW_STARTED', ?, ?)
+      `).run(
+        auditId,
+        documentId,
+        user.id,
+        user.name,
+        user.role,
+        JSON.stringify({
+          version: doc.current_version,
+          reviewer_name: user.name,
+        }),
+        now
+      );
     });
 
     transaction();
@@ -256,8 +285,9 @@ export const workflowService = {
     const doc = getDocumentById(params.documentId);
     if (!doc) throw new WorkflowError(404, 'Document not found');
 
-    // Auto-transition to UNDER_REVIEW if currently SUBMITTED to keep flow seamless
-    if (doc.status !== 'UNDER_REVIEW' && doc.status !== 'SUBMITTED') {
+    assertAssignedReviewer(user, doc);
+
+    if (doc.status !== 'UNDER_REVIEW') {
       throw new WorkflowError(400, `Cannot request correction on document with status '${doc.status}'`);
     }
 
@@ -276,11 +306,14 @@ export const workflowService = {
 
     const transaction = db.transaction(() => {
       // 1. Update document status
-      db.prepare(`
+      const update = db.prepare(`
         UPDATE documents 
         SET status = 'CORRECTION_REQUIRED', updated_at = ?
-        WHERE id = ?
-      `).run(now, params.documentId);
+        WHERE id = ? AND status = 'UNDER_REVIEW' AND (assigned_to = ? OR ? = 1)
+      `).run(now, params.documentId, user.id, user.role === 'ADMIN' ? 1 : 0);
+      if (update.changes !== 1) {
+        throw new WorkflowError(409, 'Document state or reviewer assignment changed. Refresh and try again.');
+      }
 
       // 2. Insert Review record
       db.prepare(`
@@ -290,12 +323,14 @@ export const workflowService = {
 
       // 3. Append audit log
       db.prepare(`
-        INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-        VALUES (?, ?, ?, 'CORRECTION_REQUESTED', ?, ?)
+        INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, 'CORRECTION_REQUESTED', ?, ?)
       `).run(
         auditId,
         params.documentId,
         user.id,
+        user.name,
+        user.role,
         JSON.stringify({
           version: doc.current_version,
           reason: params.reason.trim(),
@@ -309,7 +344,7 @@ export const workflowService = {
     transaction();
 
     // Dispatch notification to client
-    const clientUser = db.prepare('SELECT id FROM users WHERE client_id = ? LIMIT 1').get(doc.client_id) as any;
+    const clientUser = db.prepare('SELECT id FROM users WHERE client_id = ? LIMIT 1').get(doc.client_id) as { id: string } | undefined;
     if (clientUser) {
       try {
         await notificationService.notify({
@@ -359,6 +394,17 @@ export const workflowService = {
     const now = new Date().toISOString();
 
     const transaction = db.transaction(() => {
+      // Claim the expected version/state first. This turns competing uploads
+      // into a deterministic 409 rather than duplicate version records.
+      const update = db.prepare(`
+        UPDATE documents
+        SET status = 'SUBMITTED', current_version = ?, updated_at = ?
+        WHERE id = ? AND status = 'CORRECTION_REQUIRED' AND current_version = ?
+      `).run(newVersionNumber, now, doc.id, doc.current_version);
+      if (update.changes !== 1) {
+        throw new WorkflowError(409, 'Document state changed. Refresh and try again.');
+      }
+
       // 1. Insert new version (never overwrite old version!)
       db.prepare(`
         INSERT INTO document_versions (id, document_id, version_number, file_name, file_path, file_size, file_type, uploaded_by, uploaded_at, notes)
@@ -376,21 +422,16 @@ export const workflowService = {
         params.notes?.trim() || `Correction for v${doc.current_version}`
       );
 
-      // 2. Transition status back to SUBMITTED and increment current_version
-      db.prepare(`
-        UPDATE documents 
-        SET status = 'SUBMITTED', current_version = ?, updated_at = ?
-        WHERE id = ?
-      `).run(newVersionNumber, now, doc.id);
-
       // 3. Append audit log
       db.prepare(`
-        INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-        VALUES (?, ?, ?, 'CORRECTION_UPLOADED', ?, ?)
+        INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, 'CORRECTION_UPLOADED', ?, ?)
       `).run(
         auditId,
         doc.id,
         user.id,
+        user.name,
+        user.role,
         JSON.stringify({
           version: newVersionNumber,
           previous_version: doc.current_version,
@@ -460,8 +501,9 @@ export const workflowService = {
     const doc = getDocumentById(params.documentId);
     if (!doc) throw new WorkflowError(404, 'Document not found');
 
-    // Allow approval if UNDER_REVIEW (or auto-start review if currently SUBMITTED)
-    if (doc.status !== 'UNDER_REVIEW' && doc.status !== 'SUBMITTED') {
+    assertAssignedReviewer(user, doc);
+
+    if (doc.status !== 'UNDER_REVIEW') {
       throw new WorkflowError(400, `This document cannot be approved in its current state ('${doc.status}')`);
     }
 
@@ -479,11 +521,14 @@ export const workflowService = {
 
     const transaction = db.transaction(() => {
       // 1. Update document status to APPROVED
-      db.prepare(`
+      const update = db.prepare(`
         UPDATE documents 
-        SET status = 'APPROVED', assigned_to = ?, updated_at = ?
-        WHERE id = ?
-      `).run(user.id, now, params.documentId);
+        SET status = 'APPROVED', updated_at = ?
+        WHERE id = ? AND status = 'UNDER_REVIEW' AND (assigned_to = ? OR ? = 1)
+      `).run(now, params.documentId, user.id, user.role === 'ADMIN' ? 1 : 0);
+      if (update.changes !== 1) {
+        throw new WorkflowError(409, 'Document state or reviewer assignment changed. Refresh and try again.');
+      }
 
       // 2. Insert Review record
       db.prepare(`
@@ -493,12 +538,14 @@ export const workflowService = {
 
       // 3. Append audit log
       db.prepare(`
-        INSERT INTO audit_logs (id, document_id, actor_id, action, metadata, created_at)
-        VALUES (?, ?, ?, 'DOCUMENT_APPROVED', ?, ?)
+        INSERT INTO audit_logs (id, document_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, 'DOCUMENT_APPROVED', ?, ?)
       `).run(
         auditId,
         params.documentId,
         user.id,
+        user.name,
+        user.role,
         JSON.stringify({
           version: doc.current_version,
           comment: params.comment?.trim() || 'Verified and approved by auditor',
@@ -511,7 +558,7 @@ export const workflowService = {
     transaction();
 
     // Dispatch notification to client
-    const clientUser = db.prepare('SELECT id FROM users WHERE client_id = ? LIMIT 1').get(doc.client_id) as any;
+    const clientUser = db.prepare('SELECT id FROM users WHERE client_id = ? LIMIT 1').get(doc.client_id) as { id: string } | undefined;
     if (clientUser) {
       try {
         await notificationService.notify({

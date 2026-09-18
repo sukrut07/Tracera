@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AlertCircle, Eye, EyeOff, Building2, User, Shield, Star } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { InteractiveNetworkBackground } from '@/components/canvas/InteractiveNetworkBackground';
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import {
@@ -12,44 +11,30 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 
-const ROLE_OPTIONS = [
-  {
-    value: 'CLIENT',
-    label: 'Client',
-    description: 'Submit documents & track your audit',
-    icon: Building2,
-    href: '/client/dashboard',
-  },
-  {
-    value: 'AUDITOR',
-    label: 'Auditor',
-    description: 'Manage fieldwork & review queue',
-    icon: Shield,
-    href: '/auditor/dashboard',
-  },
-  {
-    value: 'PARTNER',
-    label: 'Partner',
-    description: 'Approve sign-offs & governance',
-    icon: Star,
-    href: '/partner/dashboard',
-  },
-  {
-    value: 'ADMIN',
-    label: 'Admin',
-    description: 'Full practice administration',
-    icon: User,
-    href: '/admin/dashboard',
-  },
-];
-
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // If already authenticated, forward to role dashboard
+  useEffect(() => {
+    fetch('/api/auth/login')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          const redirectMap: Record<string, string> = {
+            CLIENT: '/client/dashboard',
+            AUDITOR: '/auditor/dashboard',
+            PARTNER: '/partner/dashboard',
+            ADMIN: '/admin/dashboard',
+          };
+          window.location.href = redirectMap[data.user.role] || '/client/dashboard';
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const mapFirebaseError = (err: any): string => {
     const code = err?.code || '';
@@ -263,28 +248,6 @@ export default function LoginPage() {
               <span>Continue with Google</span>
             </button>
           </form>
-
-          {/* Workspace role previews */}
-          <div className="pt-3 border-t border-[#0A0A0A]/20 space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#777770] text-center">
-              Your role determines your workspace
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {ROLE_OPTIONS.map(({ value, label, description, icon: Icon, href }) => (
-                <Link
-                  key={value}
-                  href={href}
-                  className="p-2.5 border border-[#E5E5E0] hover:border-[#0A0A0A] hover:bg-[#F7F5EF] transition-all group"
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <Icon className="w-3 h-3 text-[#E73520]" />
-                    <span className="text-[11px] font-bold text-[#0A0A0A]">{label}</span>
-                  </div>
-                  <p className="text-[10px] text-[#777770] leading-tight">{description}</p>
-                </Link>
-              ))}
-            </div>
-          </div>
 
           {/* Sign up link */}
           <div className="text-center text-xs">

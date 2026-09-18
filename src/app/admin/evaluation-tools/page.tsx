@@ -64,17 +64,8 @@ export default function AdminEvaluationToolsPage() {
     }
   };
 
-  const adminUser = {
-    id: 'admin-1',
-    name: 'Admin (Partner)',
-    email: 'admin@demo.com',
-    role: 'ADMIN' as const,
-    client_id: null,
-    created_at: '',
-  };
-
   return (
-    <AppShell currentUser={adminUser}>
+    <AppShell>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E5E5E0] pb-6">

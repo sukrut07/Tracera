@@ -66,6 +66,10 @@ export default function DocumentDetailPage({
           ? `/api/documents/${documentId}?version=${version}`
           : `/api/documents/${documentId}`;
         const res = await fetch(url);
+        if (res.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
         const data = await res.json();
 
         if (!res.ok) {
@@ -104,81 +108,79 @@ export default function DocumentDetailPage({
       const res = await fetch(`/api/documents/${document.id}/report`);
       if (!res.ok) throw new Error('PDF generation failed');
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `TRESERA_Audit_Report_${document.title.replace(/[^a-zA-Z0-9_-]/g, '_')}_v${document.current_version}.pdf`;
+      a.href = downloadUrl;
+      a.download = `TRACERA_Audit_Report_${document.id}.pdf`;
       window.document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      window.document.body.removeChild(a);
-    } catch (err) {
-      console.error(err);
-      alert('Could not generate PDF Audit Report. Please try again.');
+      window.URL.revokeObjectURL(downloadUrl);
+      a.remove();
+    } catch (err: any) {
+      alert(err.message || 'Export failed');
     } finally {
       setIsExportingPdf(false);
     }
   };
 
-  if (loading && !document) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3 text-slate-500 text-xs">
-          <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-          <span className="font-medium text-slate-600">Loading Tracera Audit Workspace...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">Loading audit file...</span>
         </div>
       </div>
     );
   }
 
-  if (error || !document) {
+  if (error || !document || !currentUser) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md w-full text-center shadow-xs">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-slate-900">Document Unavailable</h3>
-          <p className="text-xs text-slate-500 mt-1 mb-6">{error || 'Could not find requested audit record'}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] p-4">
+        <div className="max-w-md w-full p-6 bg-white border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] space-y-4">
+          <div className="flex items-center gap-2 text-[#E73520] font-bold">
+            <AlertCircle className="w-5 h-5" />
+            <span>Document Access Restricted</span>
+          </div>
+          <p className="text-xs text-[#555550]">{error || 'Document not found or unauthorized'}</p>
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl"
+            href="/client/dashboard"
+            className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-bold inline-block"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Return to Dashboard</span>
+            ← Back to Dashboard
           </Link>
         </div>
       </div>
     );
   }
 
-  const isAuditor = currentUser?.role === 'AUDITOR' || currentUser?.role === 'ADMIN';
-  const isClient = currentUser?.role === 'CLIENT';
-  const backHref = isAuditor ? '/auditor/dashboard' : '/client/dashboard';
+  const role = currentUser.role;
+  const isClient = role === 'CLIENT';
+  const isAuditor = role === 'AUDITOR' || role === 'ADMIN' || role === 'PARTNER';
+  const backHref =
+    role === 'CLIENT'
+      ? '/client/dashboard'
+      : role === 'PARTNER'
+      ? '/partner/dashboard'
+      : role === 'ADMIN'
+      ? '/admin/documents'
+      : '/auditor/dashboard';
 
-  const selectedVersion =
+  const activeVersion =
     document.versions?.find((v) => v.version_number === activeVersionNumber) ||
     document.versions?.[0] || {
       id: 'v1',
       document_id: document.id,
-      version_number: document.current_version,
-      file_name: document.title,
-      file_path: '#',
+      version_number: 1,
+      file_name: document.file_name || `${document.title}.pdf`,
+      file_path: `/uploads/${document.file_name || 'document.pdf'}`,
       uploaded_by: '',
       uploaded_at: document.created_at,
     };
+  const selectedVersion = activeVersion;
 
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: '1',
-          name: 'User',
-          email: 'user@demo.com',
-          role: 'CLIENT',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       {/* Top Breadcrumb & Actions Bar */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">

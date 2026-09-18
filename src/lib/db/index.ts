@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { hashPassword } from '@/lib/auth/password';
 import {
   UserProfile,
   Client,
@@ -115,11 +116,19 @@ function initSchema(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS audit_logs (
       id TEXT PRIMARY KEY,
-      document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+      -- Historical audit records deliberately do not cascade with documents.
+      document_id TEXT,
       engagement_id TEXT,
       actor_id TEXT NOT NULL REFERENCES users(id),
       action TEXT NOT NULL,
       metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
 
@@ -297,6 +306,7 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_docs_status ON documents(status);
     CREATE INDEX IF NOT EXISTS idx_docs_assigned ON documents(assigned_to);
     CREATE INDEX IF NOT EXISTS idx_audit_doc ON audit_logs(document_id, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(recipient_id, read, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_eng_client ON engagements(client_id);
     CREATE INDEX IF NOT EXISTS idx_eng_status ON engagements(status);
@@ -324,21 +334,32 @@ function initSchema(db: Database.Database) {
     const auditCols = db.prepare('PRAGMA table_info(audit_logs)').all() as any[];
     const docIdCol = auditCols.find((c) => c.name === 'document_id');
     const hasEngCol = auditCols.some((c) => c.name === 'engagement_id');
+    const hasActorNameCol = auditCols.some((c) => c.name === 'actor_name');
+    const hasActorRoleCol = auditCols.some((c) => c.name === 'actor_role');
+    const auditForeignKeys = db.prepare('PRAGMA foreign_key_list(audit_logs)').all() as { from: string; on_delete: string }[];
+    const cascadesWithDocument = auditForeignKeys.some(
+      (key) => key.from === 'document_id' && key.on_delete.toUpperCase() === 'CASCADE'
+    );
 
-    // If document_id was NOT NULL, migrate table to allow NULL document_id for engagement events
-    if (docIdCol && docIdCol.notnull === 1) {
+    // Preserve audit history when documents are deleted, and allow engagement-only events.
+    if (docIdCol && (docIdCol.notnull === 1 || cascadesWithDocument)) {
+      const engagementSelect = hasEngCol ? 'engagement_id' : 'NULL';
+      const actorNameSelect = hasActorNameCol ? 'actor_name' : 'NULL';
+      const actorRoleSelect = hasActorRoleCol ? 'actor_role' : 'NULL';
       db.exec(`
         CREATE TABLE IF NOT EXISTS audit_logs_temp (
           id TEXT PRIMARY KEY,
-          document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+          document_id TEXT,
           engagement_id TEXT,
           actor_id TEXT NOT NULL REFERENCES users(id),
+          actor_name TEXT,
+          actor_role TEXT,
           action TEXT NOT NULL,
           metadata TEXT NOT NULL DEFAULT '{}',
           created_at TEXT NOT NULL
         );
-        INSERT INTO audit_logs_temp (id, document_id, engagement_id, actor_id, action, metadata, created_at)
-          SELECT id, document_id, NULL, actor_id, action, metadata, created_at FROM audit_logs;
+        INSERT INTO audit_logs_temp (id, document_id, engagement_id, actor_id, actor_name, actor_role, action, metadata, created_at)
+          SELECT id, document_id, ${engagementSelect}, actor_id, ${actorNameSelect}, ${actorRoleSelect}, action, metadata, created_at FROM audit_logs;
         DROP TABLE audit_logs;
         ALTER TABLE audit_logs_temp RENAME TO audit_logs;
         CREATE INDEX IF NOT EXISTS idx_audit_doc ON audit_logs(document_id, created_at ASC);
@@ -399,22 +420,92 @@ function safeAddColumns(db: Database.Database) {
  * through the UI. Runs only when the users table is empty.
  */
 function seedSystemUsers(db: Database.Database) {
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-  if (userCount.count > 0) {
-    return; // Already seeded or user has created accounts
+  // Always check for the explicitly configured bootstrap admin. This must
+  // also work for an existing database that already has ordinary users.
+  seedBootstrapAdmin(db);
+
+  const now = new Date().toISOString();
+  const demoHash = hashPassword('Demo@123456');
+  const demoClientId = 'demo-client-001';
+
+  // Seed or ensure demo auditor first so we can assign to client
+  const auditorRow = db.prepare("SELECT id FROM users WHERE email = 'auditor@demo.com'").get() as { id: string } | undefined;
+  const auditorId = auditorRow?.id || 'sys-auditor-001';
+  if (!auditorRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
+      VALUES (?, 'Auditor Rahul', 'auditor@demo.com', 'AUDITOR', null, 'TRACERA Firm', ?, ?)
+    `).run(auditorId, demoHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, auditorId);
+  }
+
+  // Ensure default demo client exists and links to auditor
+  db.prepare(`
+    INSERT INTO clients (id, name, email, company_name, financial_year, status, assigned_auditor, created_at, updated_at)
+    VALUES (?, 'Acme Corp', 'client@demo.com', 'Acme Corp Pvt Ltd', '2024-25', 'ACTIVE', ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET assigned_auditor = excluded.assigned_auditor
+  `).run(demoClientId, auditorId, now, now);
+
+  // Seed or update demo client user
+  const clientRow = db.prepare("SELECT id FROM users WHERE email = 'client@demo.com'").get() as { id: string } | undefined;
+  if (clientRow) {
+    db.prepare("UPDATE users SET client_id = ?, password_hash = ? WHERE id = ?").run(demoClientId, demoHash, clientRow.id);
+  } else {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
+      VALUES ('sys-client-001', 'Client Portal', 'client@demo.com', 'CLIENT', ?, 'Acme Corp Pvt Ltd', ?, ?)
+    `).run(demoClientId, demoHash, now);
+  }
+
+  // Seed or update demo partner
+  const partnerRow = db.prepare("SELECT id FROM users WHERE email = 'partner@demo.com'").get() as { id: string } | undefined;
+  if (!partnerRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
+      VALUES ('sys-partner-001', 'Partner Vikram', 'partner@demo.com', 'PARTNER', null, 'TRACERA Firm', ?, ?)
+    `).run(demoHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, partnerRow.id);
+  }
+
+  // Seed or update demo admin
+  const adminRow = db.prepare("SELECT id FROM users WHERE email = 'admin@demo.com'").get() as { id: string } | undefined;
+  if (!adminRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
+      VALUES ('sys-admin-001', 'Practice Admin', 'admin@demo.com', 'ADMIN', null, 'TRACERA Firm', ?, ?)
+    `).run(demoHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(demoHash, adminRow.id);
+  }
+}
+
+/**
+ * Creates the one bootstrap administrator only when credentials are supplied
+ * through local/deployment environment variables. Credentials are never kept
+ * in the repository or exposed to the browser.
+ */
+function seedBootstrapAdmin(db: Database.Database) {
+  const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  if (!email || !password) return;
+
+  const existing = db.prepare('SELECT id, password_hash FROM users WHERE email = ? COLLATE NOCASE').get(email) as
+    | { id: string; password_hash: string | null }
+    | undefined;
+  if (existing) {
+    if (!existing.password_hash) {
+      db.prepare("UPDATE users SET role = 'ADMIN', password_hash = ? WHERE id = ?").run(hashPassword(password), existing.id);
+    }
+    return;
   }
 
   const now = new Date().toISOString();
-  const insertUser = db.prepare(`
-    INSERT INTO users (id, name, email, role, client_id, organization, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  // These are SYSTEM accounts only — zero business data attached
-  insertUser.run('sys-client-001', 'Client Portal', 'client@demo.com', 'CLIENT', null, 'Demo Organization', now);
-  insertUser.run('sys-auditor-001', 'Auditor', 'auditor@demo.com', 'AUDITOR', null, 'TRACERA Firm', now);
-  insertUser.run('sys-partner-001', 'Partner', 'partner@demo.com', 'PARTNER', null, 'TRACERA Firm', now);
-  insertUser.run('sys-admin-001', 'Admin', 'admin@demo.com', 'ADMIN', null, 'TRACERA Firm', now);
+  db.prepare(`
+    INSERT INTO users (id, name, email, role, client_id, organization, password_hash, created_at)
+    VALUES (?, ?, ?, 'ADMIN', NULL, ?, ?, ?)
+  `).run(crypto.randomUUID(), 'TRACERA Administrator', email, 'TRACERA', hashPassword(password), now);
 }
 
 // Kept as named stub so old references compile — business logic now deleted
@@ -431,13 +522,29 @@ function _unusedSeedRef() {
 
 export function getUserByEmail(email: string): UserProfile | null {
   const db = getDb();
-  const row = db.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE').get(email) as UserProfile | undefined;
+  const row = db.prepare(`
+    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, created_at
+    FROM users WHERE email = ? COLLATE NOCASE
+  `).get(email) as UserProfile | undefined;
   return row || null;
 }
 
 export function getUserById(id: string): UserProfile | null {
   const db = getDb();
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserProfile | undefined;
+  const row = db.prepare(`
+    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, created_at
+    FROM users WHERE id = ?
+  `).get(id) as UserProfile | undefined;
+  return row || null;
+}
+
+/** Password hashes are only available to the server-side login flow. */
+export function getUserAuthByEmail(email: string): (UserProfile & { password_hash: string | null }) | null {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT id, name, email, role, client_id, organization, phone, firebase_uid, password_hash, created_at
+    FROM users WHERE email = ? COLLATE NOCASE
+  `).get(email) as (UserProfile & { password_hash: string | null }) | undefined;
   return row || null;
 }
 
@@ -771,6 +878,11 @@ export function getDbNotifications(recipientId: string) {
 export function markDbNotificationRead(id: string) {
   const db = getDb();
   db.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(id);
+}
+
+export function markAllDbNotificationsRead(recipientId: string) {
+  const db = getDb();
+  db.prepare('UPDATE notifications SET read = 1 WHERE recipient_id = ?').run(recipientId);
 }
 
 // Extracted OCR Data Repository
@@ -1474,4 +1586,3 @@ export function getDocumentRequests(engagementId?: string) {
     return { ...r, channels };
   });
 }
-

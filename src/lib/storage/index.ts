@@ -2,8 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
-const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.csv', '.xls', '.xlsx'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.csv', '.xls', '.xlsx', '.doc', '.docx'];
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+
+const PRIVATE_STORAGE_DIR = path.join(process.cwd(), '.data', 'storage', 'documents');
 
 export async function saveUploadedFile(file: File): Promise<{
   fileName: string;
@@ -18,24 +20,41 @@ export async function saveUploadedFile(file: File): Promise<{
   const originalName = file.name;
   const ext = path.extname(originalName).toLowerCase();
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    throw new Error(`Unsupported file type: '${ext}'. Allowed types: PDF, XLSX, XLS, CSV, PNG, JPG, JPEG`);
+    throw new Error(`Unsupported file type: '${ext}'. Allowed types: PDF, PNG, JPG, JPEG, CSV, XLS, XLSX, DOC, DOCX`);
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const safeBaseName = path.basename(originalName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-  const storedFileName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}_${safeBaseName}${ext}`;
+  const storedFileName = `${crypto.randomUUID()}${ext}`;
 
-  // Local filesystem storage under public/uploads
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
+  // Private storage directory outside public/
+  await fs.mkdir(PRIVATE_STORAGE_DIR, { recursive: true });
 
-  const fullDiskPath = path.join(uploadDir, storedFileName);
+  const fullDiskPath = path.join(PRIVATE_STORAGE_DIR, storedFileName);
   await fs.writeFile(fullDiskPath, buffer);
 
   return {
     fileName: originalName,
-    filePath: `/uploads/${storedFileName}`,
+    filePath: storedFileName,
     fileSize: file.size,
     fileType: file.type || 'application/octet-stream',
   };
+}
+
+export async function getPrivateFilePath(storedFileName: string): Promise<string> {
+  return path.join(PRIVATE_STORAGE_DIR, storedFileName);
+}
+
+export async function getPrivateFileBuffer(storedFileName: string): Promise<Buffer | null> {
+  try {
+    const fullPath = path.join(PRIVATE_STORAGE_DIR, path.basename(storedFileName));
+    return await fs.readFile(fullPath);
+  } catch {
+    // If legacy file in public/uploads exists, check that as a fallback
+    try {
+      const legacyPath = path.join(process.cwd(), 'public', storedFileName.replace(/^\//, ''));
+      return await fs.readFile(legacyPath);
+    } catch {
+      return null;
+    }
+  }
 }

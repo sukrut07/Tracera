@@ -10,10 +10,10 @@ async function testHttpWorkflow() {
   const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'client@demo.com' }),
+    body: JSON.stringify({ email: 'client@demo.com', password: 'Demo@123456' }),
   });
   const loginData = await loginRes.json();
-  assert(loginRes.ok, 'Login must succeed');
+  assert(loginRes.ok, `Login must succeed: ${JSON.stringify(loginData)}`);
   assert.strictEqual(loginData.user.role, 'CLIENT');
   const clientCookie = loginRes.headers.get('set-cookie');
   console.log('✓ Client logged in:', loginData.user.name, 'Role:', loginData.user.role);
@@ -56,7 +56,7 @@ async function testHttpWorkflow() {
   const auditorLoginRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'auditor@demo.com' }),
+    body: JSON.stringify({ email: 'auditor@demo.com', password: 'Demo@123456' }),
   });
   const auditorLoginData = await auditorLoginRes.json();
   const auditorCookie = auditorLoginRes.headers.get('set-cookie');
@@ -74,8 +74,26 @@ async function testHttpWorkflow() {
   assert.strictEqual(targetInQueue.status, 'SUBMITTED');
   console.log('✓ Document found in auditor queue. Status:', targetInQueue.status);
 
-  // STEP 6: Auditor requests correction
-  console.log('\n6. POST /api/workflow/action (REQUEST_CORRECTION) as Auditor');
+  // STEP 6a: Auditor starts review (SUBMITTED -> UNDER_REVIEW)
+  console.log('\n6a. POST /api/workflow/action (START_REVIEW) as Auditor');
+  const startReviewRes = await fetch(`${BASE_URL}/api/workflow/action`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: auditorCookie || '',
+    },
+    body: JSON.stringify({
+      action: 'START_REVIEW',
+      documentId: newDocId,
+    }),
+  });
+  const startReviewData = await startReviewRes.json();
+  assert(startReviewRes.ok, `Start review must succeed: ${JSON.stringify(startReviewData)}`);
+  assert.strictEqual(startReviewData.document.status, 'UNDER_REVIEW');
+  console.log('✓ Review started. Status:', startReviewData.document.status);
+
+  // STEP 6b: Auditor requests correction (UNDER_REVIEW -> CORRECTION_REQUIRED)
+  console.log('\n6b. POST /api/workflow/action (REQUEST_CORRECTION) as Auditor');
   const correctionReason = 'Invoice INV-204 is missing from the purchase register. Please update the register and re-upload the corrected version.';
   const reqCorrectionRes = await fetch(`${BASE_URL}/api/workflow/action`, {
     method: 'POST',
@@ -91,7 +109,7 @@ async function testHttpWorkflow() {
     }),
   });
   const reqCorrectionData = await reqCorrectionRes.json();
-  assert(reqCorrectionRes.ok);
+  assert(reqCorrectionRes.ok, `Request correction must succeed: ${JSON.stringify(reqCorrectionData)}`);
   assert.strictEqual(reqCorrectionData.document.status, 'CORRECTION_REQUIRED');
   console.log('✓ Correction requested. Status:', reqCorrectionData.document.status);
 
@@ -119,13 +137,31 @@ async function testHttpWorkflow() {
     body: v2FormData,
   });
   const uploadV2Data = await uploadV2Res.json();
-  assert(uploadV2Res.ok);
+  assert(uploadV2Res.ok, `Upload correction must succeed: ${JSON.stringify(uploadV2Data)}`);
   assert.strictEqual(uploadV2Data.document.status, 'SUBMITTED');
   assert.strictEqual(uploadV2Data.document.current_version, 2);
   console.log('✓ Version 2 uploaded! Status:', uploadV2Data.document.status, 'Version:', uploadV2Data.document.current_version);
 
-  // STEP 9: Auditor reviews and approves Version 2
-  console.log('\n9. POST /api/workflow/action (APPROVE) as Auditor');
+  // STEP 9a: Auditor starts review on Version 2 (SUBMITTED -> UNDER_REVIEW)
+  console.log('\n9a. POST /api/workflow/action (START_REVIEW) on V2 as Auditor');
+  const startReviewV2Res = await fetch(`${BASE_URL}/api/workflow/action`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: auditorCookie || '',
+    },
+    body: JSON.stringify({
+      action: 'START_REVIEW',
+      documentId: newDocId,
+    }),
+  });
+  const startReviewV2Data = await startReviewV2Res.json();
+  assert(startReviewV2Res.ok, `Start review v2 must succeed: ${JSON.stringify(startReviewV2Data)}`);
+  assert.strictEqual(startReviewV2Data.document.status, 'UNDER_REVIEW');
+  console.log('✓ Review started on V2. Status:', startReviewV2Data.document.status);
+
+  // STEP 9b: Auditor approves Version 2 (UNDER_REVIEW -> APPROVED)
+  console.log('\n9b. POST /api/workflow/action (APPROVE) as Auditor');
   const approveRes = await fetch(`${BASE_URL}/api/workflow/action`, {
     method: 'POST',
     headers: {
@@ -139,7 +175,7 @@ async function testHttpWorkflow() {
     }),
   });
   const approveData = await approveRes.json();
-  assert(approveRes.ok);
+  assert(approveRes.ok, `Approve must succeed: ${JSON.stringify(approveData)}`);
   assert.strictEqual(approveData.document.status, 'APPROVED');
   console.log('✓ Auditor approved document. Status:', approveData.document.status);
 

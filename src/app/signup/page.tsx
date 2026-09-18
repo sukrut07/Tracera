@@ -2,43 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Building2, User, Shield, Star, Check } from 'lucide-react';
+import { AlertCircle, ArrowRight, Briefcase, ShieldCheck, Users } from 'lucide-react';
 import { InteractiveNetworkBackground } from '@/components/canvas/InteractiveNetworkBackground';
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-
-type Role = 'CLIENT' | 'AUDITOR' | 'PARTNER' | 'ADMIN';
-
-const ROLES: { value: Role; label: string; description: string; icon: React.ElementType; dashboard: string }[] = [
-  {
-    value: 'CLIENT',
-    label: 'Client',
-    description: 'Submit docs, track your audit progress',
-    icon: Building2,
-    dashboard: '/client/dashboard',
-  },
-  {
-    value: 'AUDITOR',
-    label: 'Auditor',
-    description: 'Manage fieldwork & review queue',
-    icon: Shield,
-    dashboard: '/auditor/dashboard',
-  },
-  {
-    value: 'PARTNER',
-    label: 'Partner',
-    description: 'Sign-offs & governance oversight',
-    icon: Star,
-    dashboard: '/partner/dashboard',
-  },
-  {
-    value: 'ADMIN',
-    label: 'Admin',
-    description: 'Full firm & user administration',
-    icon: User,
-    dashboard: '/admin/dashboard',
-  },
-];
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -47,7 +14,7 @@ export default function SignupPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<Role>('CLIENT');
+  const [selectedRole, setSelectedRole] = useState<'CLIENT' | 'AUDITOR' | 'PARTNER'>('CLIENT');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +26,33 @@ export default function SignupPage() {
     return err?.message || 'Registration failed. Please check your details.';
   };
 
-  const selectedRole = ROLES.find((r) => r.value === role)!;
+  const handleQuickLogin = async (role: 'CLIENT' | 'AUDITOR' | 'PARTNER') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const emailMap = {
+        CLIENT: 'client@demo.com',
+        AUDITOR: 'auditor@demo.com',
+        PARTNER: 'partner@demo.com',
+      };
+      const redirectMap = {
+        CLIENT: '/client/dashboard',
+        AUDITOR: '/auditor/dashboard',
+        PARTNER: '/partner/dashboard',
+      };
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailMap[role], password: 'Demo@123456' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Quick access failed');
+      window.location.href = data.redirectTo || redirectMap[role];
+    } catch (err: any) {
+      setError(err.message || 'Failed to access dashboard');
+      setLoading(false);
+    }
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,12 +67,12 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      let firebaseUid: string | undefined;
+      let idToken: string | undefined;
 
       if (isFirebaseConfigured && auth) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-          firebaseUid = cred.user.uid;
+          idToken = await cred.user.getIdToken();
           await updateProfile(cred.user, { displayName: name.trim() });
         } catch (fbErr: any) {
           throw new Error(mapFirebaseError(fbErr));
@@ -95,16 +88,15 @@ export default function SignupPage() {
           password,
           organization: organization.trim(),
           phone: phone.trim() || undefined,
-          role,
-          firebaseUid,
+          role: selectedRole,
+          idToken,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-      // Redirect to the selected role's dashboard
-      window.location.href = data.redirectTo || selectedRole.dashboard;
+      window.location.href = data.redirectTo || '/client/dashboard';
     } catch (err: any) {
       setError(err.message || 'Registration error. Please verify your details.');
       setLoading(false);
@@ -138,57 +130,74 @@ export default function SignupPage() {
           {/* Eyebrow + Title */}
           <div className="space-y-1 text-center">
             <p className="text-[10px] font-bold text-[#E73520] uppercase tracking-widest">
-              Workspace registration
+              {selectedRole === 'CLIENT'
+                ? 'Client Portal Registration'
+                : selectedRole === 'AUDITOR'
+                ? 'Auditor Console Registration'
+                : 'Partner Suite Registration'}
             </p>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0A0A0A]">
-              Create your account
+              {selectedRole === 'CLIENT'
+                ? 'Register your organization'
+                : selectedRole === 'AUDITOR'
+                ? 'Register as CA Auditor'
+                : 'Register as CA Partner'}
             </h1>
             <p className="text-xs text-[#555550]">
-              Choose your role to access the right workspace from day one.
+              {selectedRole === 'CLIENT'
+                ? 'Create your client audit workspace to submit statutory documents.'
+                : selectedRole === 'AUDITOR'
+                ? 'Join the practice audit team to review documents, raise corrections, and verify compliance.'
+                : 'Join the lead CA partner team for sign-off gates, billing settlement, and audit closures.'}
             </p>
           </div>
 
           <div className="border-t-2 border-[#0A0A0A]" />
 
-          {/* Role Selector */}
-          <div className="space-y-2">
-            <p className="text-[11px] font-bold text-[#0A0A0A] uppercase tracking-wider">
-              I am joining as
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {ROLES.map(({ value, label, description, icon: Icon }) => {
-                const active = role === value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setRole(value)}
-                    className={`p-3 border-2 text-left transition-all cursor-pointer ${
-                      active
-                        ? 'border-[#0A0A0A] bg-[#0A0A0A] text-white shadow-[3px_3px_0_#E73520]'
-                        : 'border-[#E5E5E0] hover:border-[#0A0A0A] bg-white text-[#0A0A0A]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <Icon className={`w-3.5 h-3.5 ${active ? 'text-[#E73520]' : 'text-[#E73520]'}`} />
-                        <span className="text-[11px] font-bold">{label}</span>
-                      </div>
-                      {active && <Check className="w-3 h-3 text-[#E73520]" />}
-                    </div>
-                    <p className={`text-[10px] leading-tight ${active ? 'text-white/70' : 'text-[#777770]'}`}>
-                      {description}
-                    </p>
-                  </button>
-                );
-              })}
+          {/* Role Registration Selector */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-[#0A0A0A] uppercase tracking-wider">
+              Registering As:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedRole('CLIENT')}
+                className={`py-2 px-2 border-2 border-[#0A0A0A] flex items-center justify-center gap-1.5 text-center text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  selectedRole === 'CLIENT'
+                    ? 'bg-[#0A0A0A] text-white shadow-[2px_2px_0_#5CC8FF]'
+                    : 'bg-[#F7F5EF] text-[#0A0A0A] hover:bg-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-[#5CC8FF]" />
+                <span>Client</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('AUDITOR')}
+                className={`py-2 px-2 border-2 border-[#0A0A0A] flex items-center justify-center gap-1.5 text-center text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  selectedRole === 'AUDITOR'
+                    ? 'bg-[#0A0A0A] text-white shadow-[2px_2px_0_#FFD23F]'
+                    : 'bg-[#F7F5EF] text-[#0A0A0A] hover:bg-white'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5 text-[#FFD23F]" />
+                <span>Auditor</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('PARTNER')}
+                className={`py-2 px-2 border-2 border-[#0A0A0A] flex items-center justify-center gap-1.5 text-center text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  selectedRole === 'PARTNER'
+                    ? 'bg-[#0A0A0A] text-white shadow-[2px_2px_0_#C7F36B]'
+                    : 'bg-[#F7F5EF] text-[#0A0A0A] hover:bg-white'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#C7F36B]" />
+                <span>Partner</span>
+              </button>
             </div>
-            <p className="text-[10px] text-[#777770]">
-              You&apos;ll be taken to the <strong>{selectedRole.label}</strong> dashboard after account creation.
-            </p>
           </div>
-
-          <div className="border-t border-[#E5E5E0]" />
 
           {/* Error */}
           {error && (
@@ -208,6 +217,7 @@ export default function SignupPage() {
                 <input
                   type="text"
                   required
+                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Rahul Sharma"
@@ -217,14 +227,15 @@ export default function SignupPage() {
 
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-[#0A0A0A] uppercase tracking-wider">
-                  Organization *
+                  Work email *
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  placeholder="Acme Manufacturing Ltd"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={selectedRole === 'CLIENT' ? 'rahul@acme.com' : 'rahul@tracera.internal'}
                   className="w-full px-3.5 py-2.5 bg-white border-2 border-[#0A0A0A] text-[#0A0A0A] text-xs focus:outline-none focus:shadow-[2px_2px_0_#E73520] transition-all"
                 />
               </div>
@@ -232,25 +243,25 @@ export default function SignupPage() {
 
             <div className="space-y-1">
               <label className="block text-[11px] font-bold text-[#0A0A0A] uppercase tracking-wider">
-                Work email *
+                {selectedRole === 'CLIENT' ? 'Organization / Client name *' : 'Practice / Firm Name *'}
               </label>
               <input
-                type="email"
+                type="text"
                 required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
+                value={organization}
+                onChange={(e) => setOrganization(e.target.value)}
+                placeholder={selectedRole === 'CLIENT' ? 'Acme Manufacturing Ltd.' : 'TRACERA Audit Practice'}
                 className="w-full px-3.5 py-2.5 bg-white border-2 border-[#0A0A0A] text-[#0A0A0A] text-xs focus:outline-none focus:shadow-[2px_2px_0_#E73520] transition-all"
               />
             </div>
 
             <div className="space-y-1">
               <label className="block text-[11px] font-bold text-[#0A0A0A] uppercase tracking-wider">
-                Phone <span className="text-[#888880] font-normal normal-case">(optional)</span>
+                Contact phone (Optional)
               </label>
               <input
                 type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98765 43210"
@@ -295,13 +306,87 @@ export default function SignupPage() {
               disabled={loading}
               className="neo-btn bg-[#0A0A0A] hover:bg-[#E73520] text-white w-full py-3.5 text-xs uppercase tracking-widest font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
             >
-              {loading ? 'Creating account…' : `Create ${selectedRole.label} account →`}
+              {loading
+                ? 'Creating account…'
+                : selectedRole === 'CLIENT'
+                ? 'Register organization →'
+                : selectedRole === 'AUDITOR'
+                ? 'Register as Auditor →'
+                : 'Register as CA Partner →'}
             </button>
           </form>
 
-          {/* Sign in link */}
+          {/* Quick Dashboard Access Buttons */}
+          <div className="space-y-2 pt-1">
+            <div className="relative flex items-center justify-center">
+              <div className="w-full border-t-2 border-[#0A0A0A]/15 absolute" />
+              <span className="relative bg-white px-3 text-[10px] font-black uppercase tracking-widest text-[#777770]">
+                Or Instant Dashboard Access
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('CLIENT')}
+                disabled={loading}
+                className="p-2.5 bg-white hover:bg-[#F7F5EF] border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] text-left transition-all cursor-pointer group hover:translate-x-0.5 hover:translate-y-0.5"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-[#5CC8FF] text-[#0A0A0A] border border-[#0A0A0A]">
+                    CLIENT
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-[#0A0A0A] group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <p className="text-[11px] font-bold text-[#0A0A0A] leading-tight">Client Portal</p>
+                <p className="text-[9px] text-[#777770]">client@demo.com</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('AUDITOR')}
+                disabled={loading}
+                className="p-2.5 bg-white hover:bg-[#F7F5EF] border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] text-left transition-all cursor-pointer group hover:translate-x-0.5 hover:translate-y-0.5"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-[#FFD23F] text-[#0A0A0A] border border-[#0A0A0A]">
+                    AUDITOR
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-[#0A0A0A] group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <p className="text-[11px] font-bold text-[#0A0A0A] leading-tight">Auditor Console</p>
+                <p className="text-[9px] text-[#777770]">auditor@demo.com</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('PARTNER')}
+                disabled={loading}
+                className="p-2.5 bg-white hover:bg-[#F7F5EF] border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] text-left transition-all cursor-pointer group hover:translate-x-0.5 hover:translate-y-0.5"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-[#C7F36B] text-[#0A0A0A] border border-[#0A0A0A]">
+                    PARTNER
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-[#0A0A0A] group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <p className="text-[11px] font-bold text-[#0A0A0A] leading-tight">Partner Suite</p>
+                <p className="text-[9px] text-[#777770]">partner@demo.com</p>
+              </button>
+            </div>
+          </div>
+
+          <div className="border-2 border-[#0A0A0A] bg-[#F7F5EF] p-4 space-y-2 shadow-[2px_2px_0_#E73520]">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#E73520]">
+              Role Permissions Notice
+            </p>
+            <p className="text-[11px] text-[#555550]">
+              Client accounts are bound to an auditee organization. Auditor and Partner accounts join the CA firm practice with access to review consoles, maker-checker sign-offs, and engagement closures.
+            </p>
+          </div>
+
           <div className="text-center text-xs pt-1 border-t border-[#0A0A0A]/10">
-            <span className="text-[#555550]">Already have a workspace account? </span>
+            <span className="text-[#555550]">Already have an account? </span>
             <Link href="/login" className="font-bold text-[#E73520] hover:underline ml-1">
               Sign in →
             </Link>
@@ -310,7 +395,7 @@ export default function SignupPage() {
       </main>
 
       <footer className="relative z-10 max-w-md mx-auto text-center text-[10px] text-[#777770] pt-4">
-        Role permissions are assigned by your firm administrator after approval.
+        Administrator access is reserved for the bootstrap account and firm-approved administrators.
       </footer>
     </div>
   );

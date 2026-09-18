@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       currentUser: user,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch documents' }, { status: 500 });
+    const status = error?.status || (error?.name === 'WorkflowError' ? error?.statusCode : 500);
+    return NextResponse.json({ error: error.message || 'Failed to fetch documents' }, { status });
   }
 }

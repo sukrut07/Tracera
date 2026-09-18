@@ -36,6 +36,10 @@ export default function AuditorDashboardPage() {
     try {
       if (isInitial) setLoading(true);
       const res = await fetch('/api/documents');
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         setDocuments(data.documents || []);
@@ -61,27 +65,35 @@ export default function AuditorDashboardPage() {
     };
   }, [fetchDashboardData]);
 
-  if (!currentUser && loading) {
+  if (loading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
-        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-mono text-xs">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
           <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
-          <span className="font-bold">LOADING AUDITOR REVIEW QUEUE...</span>
+          <span className="font-bold">Loading auditor workspace...</span>
         </div>
       </div>
     );
   }
 
+  if (!currentUser) {
+    return null;
+  }
+
   // Filter documents
   const filteredDocuments = documents.filter((doc) => {
-    if (statusFilter !== 'ALL' && doc.status !== statusFilter) return false;
-
-    if (searchQuery.trim()) {
+    // Search
+    if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchTitle = doc.title.toLowerCase().includes(q);
-      const matchClient = doc.client?.name.toLowerCase().includes(q) || false;
+      const matchClient = doc.client?.company_name.toLowerCase().includes(q);
       const matchType = doc.document_type.toLowerCase().includes(q);
       if (!matchTitle && !matchClient && !matchType) return false;
+    }
+
+    // Status
+    if (statusFilter !== 'ALL') {
+      return doc.status === statusFilter;
     }
 
     return true;
@@ -92,18 +104,7 @@ export default function AuditorDashboardPage() {
   const formattedPending = String(pendingCount).padStart(2, '0');
 
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: '2',
-          name: 'Rahul Sharma',
-          email: 'auditor@demo.com',
-          role: 'AUDITOR',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       <div className="space-y-6 font-sans">
         {/* Fast Work-Focused Review Queue Header */}
         <div className="border-b-[3px] border-[#0A0A0A] pb-5">

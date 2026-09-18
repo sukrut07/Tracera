@@ -14,29 +14,24 @@ async function runVerification() {
   const db = getDb();
   console.log('✓ Database reset successfully.\n');
 
-  const auditorUser: UserProfile = {
-    id: 'u2222222-2222-2222-2222-222222222222',
-    name: 'Rahul Sharma',
-    email: 'auditor@demo.com',
-    role: 'AUDITOR',
-    client_id: null,
-    created_at: '',
-  };
+  const { getUserByEmail } = await import('../src/lib/db');
+  const auditorUser = getUserByEmail('auditor@demo.com')!;
+  const partnerUser = getUserByEmail('admin@demo.com')!;
 
-  const partnerUser: UserProfile = {
-    id: 'u3333333-3333-3333-3333-333333333333',
-    name: 'Managing Partner (Admin)',
-    email: 'admin@demo.com',
-    role: 'ADMIN',
-    client_id: null,
-    created_at: '',
-  };
-
-  // 2. Fetch seed engagement
-  console.log('Step 2: Verifying seed engagement (eng-statutory-abc-2025)...');
-  const engId = 'eng-statutory-abc-2025';
+  // 2. Create new Statutory Audit engagement
+  console.log('Step 2: Creating Statutory Audit engagement for Acme Corp...');
+  const createdEng = await engagementService.createEngagement(auditorUser, {
+    clientId: 'demo-client-001',
+    title: 'Statutory Audit FY 2024-25 — Acme Corp',
+    serviceType: 'STATUTORY_AUDIT',
+    financialYear: '2024-25',
+    dueDate: '2026-09-30',
+    partnerId: partnerUser.id,
+    billingAmount: 50000,
+  });
+  const engId = createdEng.id;
   let eng = await engagementService.getEngagement(engId);
-  console.log(`✓ Found Engagement: "${eng.title}"`);
+  console.log(`✓ Created Engagement: "${eng.title}" [ID: ${eng.id}]`);
   console.log(`  - Service Type: ${eng.service_type}`);
   console.log(`  - Current Stage: ${eng.stages?.[eng.current_stage_index]?.name}`);
   console.log(`  - Stages: ${eng.stages?.length}, Checklists: ${eng.checklists?.length}, Tasks: ${eng.tasks?.length}, Approvals: ${eng.approvals?.length}`);
@@ -114,7 +109,10 @@ async function runVerification() {
 
   // 11. Multi-tier Maker-Checker Sign-off
   console.log('Step 11: Testing Maker-Checker Multi-tier Sign-off Chain...');
-  // Performer already approved in seed, let's verify Manager Reviewer
+  console.log('  Testing Performer Gate sign-off by Staff Auditor...');
+  await engagementService.submitApproval(auditorUser, engId, 'PERFORMER', 'APPROVED', 'Audit procedures executed and documented.');
+  console.log('  ✓ Staff Auditor sign-off complete.');
+
   console.log('  Testing Reviewer Gate sign-off by Manager...');
   await engagementService.submitApproval(auditorUser, engId, 'REVIEWER', 'APPROVED', 'Audit workpapers verified and complete.');
   console.log('  ✓ Manager Reviewer sign-off complete.');

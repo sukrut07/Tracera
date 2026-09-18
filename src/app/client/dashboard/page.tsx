@@ -41,6 +41,10 @@ export default function ClientDashboardPage() {
         fetch('/api/documents'),
         fetch('/api/engagements'),
       ]);
+      if (resDocs.status === 401 || resEngs.status === 401 || resDocs.status === 403 || resEngs.status === 403) {
+        window.location.href = '/login';
+        return;
+      }
       const dataDocs = await resDocs.json();
       const dataEngs = await resEngs.json();
 
@@ -71,7 +75,7 @@ export default function ClientDashboardPage() {
     };
   }, [fetchDashboardData]);
 
-  if (!currentUser && loading) {
+  if (loading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
         <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
@@ -82,10 +86,14 @@ export default function ClientDashboardPage() {
     );
   }
 
+  if (!currentUser) {
+    return null;
+  }
+
   // Filter documents
   const filteredDocuments = documents.filter((doc) => {
-    if (activeFilter === 'PENDING') return doc.status === 'SUBMITTED' || doc.status === 'UNDER_REVIEW';
-    if (activeFilter === 'CORRECTION') return doc.status === 'CORRECTION_REQUIRED';
+    if (activeFilter === 'PENDING' || activeFilter === 'UNDER_REVIEW') return doc.status === 'SUBMITTED' || doc.status === 'UNDER_REVIEW';
+    if (activeFilter === 'CORRECTION' || activeFilter === 'ACTION_REQUIRED') return doc.status === 'CORRECTION_REQUIRED';
     if (activeFilter === 'APPROVED') return doc.status === 'APPROVED';
     return true;
   });
@@ -94,18 +102,7 @@ export default function ClientDashboardPage() {
   const awaitingReviewCount = (stats?.pending_reviews ?? 0) + (stats?.under_review ?? 0);
 
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: 'usr-client-001',
-          name: 'Client User',
-          email: 'client@demo.com',
-          role: 'CLIENT',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       <div className="space-y-8 max-w-5xl mx-auto font-sans">
         {/* 1. Header: Greeting & Direct Action Focus */}
         <div className="border-b-[3px] border-[#0A0A0A] pb-6">

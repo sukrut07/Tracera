@@ -1,40 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setSessionUser, getCurrentUser } from '@/lib/auth/session';
-import { verifyFirebaseIdToken } from '@/lib/firebase/admin';
-import { getUserByEmail } from '@/lib/db';
+import { verifyFirebaseIdToken, isFirebaseAdminConfigured } from '@/lib/firebase/admin';
+import { getUserAuthByEmail, getUserByEmail } from '@/lib/db';
+import { verifyPassword } from '@/lib/auth/password';
 
+/**
+ * POST /api/auth/login
+ *
+ * Security model:
+ * - When Firebase Admin is configured: Firebase ID token is REQUIRED.
+ *   Email from request body is IGNORED. Email is extracted only from the
+ *   verified token. No token = 401.
+ * - When Firebase Admin is NOT configured (local dev only):
+ *   A dev-only password fallback is permitted ONLY when
+ *   ENABLE_DEV_AUTH=true is explicitly set in environment.
+ *   This must never be enabled in production.
+ * - The backend never trusts role, email, or clientId from the request body.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, idToken } = body;
+    const { idToken, email: bodyEmail, password } = body;
 
-    let authenticatedEmail = email?.trim()?.toLowerCase();
+    let authenticatedEmail: string | null = null;
 
-    // If Firebase ID token is provided, verify it with Firebase Admin
-    if (idToken) {
-      const decodedToken = await verifyFirebaseIdToken(idToken);
-      if (decodedToken && decodedToken.email) {
-        authenticatedEmail = decodedToken.email.toLowerCase();
+    // ── PATH 1: Firebase token verification (primary, production path) ──────
+    if (isFirebaseAdminConfigured) {
+      if (!idToken) {
+        return NextResponse.json(
+          { error: 'Authentication token is required. Please sign in with your credentials.' },
+          { status: 401 }
+        );
       }
+
+      const decodedToken = await verifyFirebaseIdToken(idToken);
+      if (!decodedToken || !decodedToken.email) {
+        return NextResponse.json(
+          { error: 'Invalid or expired authentication token. Please sign in again.' },
+          { status: 401 }
+        );
+      }
+
+      authenticatedEmail = decodedToken.email.toLowerCase();
+
+    // ── PATH 2: Dev-only password fallback ────────────────────────────────
+    } else if (process.env.ENABLE_DEV_AUTH === 'true' && process.env.NODE_ENV !== 'production') {
+      // Development only — Firebase not configured.
+      // Accepts email + password for local evaluation.
+      // THIS MUST NEVER BE ENABLED IN PRODUCTION.
+      if (!bodyEmail || !password) {
+        return NextResponse.json(
+          {
+            error: 'Development auth requires email and password. Set ENABLE_DEV_AUTH=true in .env.local.',
+            code: 'DEV_AUTH_INCOMPLETE',
+          },
+          { status: 401 }
+        );
+      }
+
+      const devUser = getUserAuthByEmail(bodyEmail.trim().toLowerCase());
+      if (!devUser) {
+        // Generic error — don't reveal whether the email exists
+        return NextResponse.json(
+          { error: 'Incorrect email or password.' },
+          { status: 401 }
+        );
+      }
+
+      // A development flag alone is never authentication. Accounts created
+      // locally carry a scrypt password hash and must verify successfully.
+      if (!verifyPassword(password, devUser.password_hash)) {
+        return NextResponse.json(
+          { error: 'Incorrect email or password.' },
+          { status: 401 }
+        );
+      }
+
+      authenticatedEmail = devUser.email;
+
+    } else {
+      // Firebase not configured and ENABLE_DEV_AUTH not set.
+      // Fail closed — never silently downgrade to email-only auth.
+      return NextResponse.json(
+        {
+          error: 'Authentication service is not configured. Set up Firebase credentials or enable ENABLE_DEV_AUTH for local development.',
+          code: 'AUTH_NOT_CONFIGURED',
+        },
+        { status: 503 }
+      );
     }
 
-    if (!authenticatedEmail) {
-      return NextResponse.json({ error: 'Work email is required' }, { status: 400 });
-    }
-
-    // Look up real TRACERA database profile
+    // ── Lookup TRACERA user profile ────────────────────────────────────────
     const userProfile = getUserByEmail(authenticatedEmail);
     if (!userProfile) {
       return NextResponse.json(
         {
-          error: 'Your account is authenticated, but no TRACERA workspace profile is configured. Contact your administrator.',
+          error: 'No TRACERA workspace account is associated with this identity. Contact your administrator.',
           code: 'PROFILE_MISSING',
         },
         { status: 404 }
       );
     }
 
-    // Establish secure session
+    // ── Establish secure server session ────────────────────────────────────
     await setSessionUser(authenticatedEmail);
 
     const redirectMap: Record<string, string> = {
@@ -46,22 +114,41 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      user: userProfile,
+      user: {
+        id: userProfile.id,
+        name: userProfile.name,
+        role: userProfile.role,
+      },
       redirectTo: redirectMap[userProfile.role] || '/client/dashboard',
     });
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('[auth/login] error:', error);
     return NextResponse.json(
-      { error: error.message || 'Authentication service error' },
+      { error: 'Authentication service error. Please try again.' },
       { status: 500 }
     );
   }
 }
 
+/**
+ * GET /api/auth/login
+ * Returns the current authenticated user profile.
+ * Used by AppShell and AppHeader to hydrate user state.
+ */
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ user: null }, { status: 401 });
   }
-  return NextResponse.json({ user });
+  // Only return safe fields — never return password hash or sensitive data
+  return NextResponse.json({
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      client_id: user.client_id,
+      organization: (user as any).organization,
+    },
+  });
 }

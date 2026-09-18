@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
     const title = formData.get('title') as string | null;
     const documentType = formData.get('documentType') as DocumentType | null;
-    const clientId = (formData.get('clientId') as string | null) || user.client_id;
+    // SECURITY: clientId is ALWAYS derived from the authenticated session.
+    // Any clientId supplied in FormData is intentionally ignored.
+    const clientId = user.client_id;
     const notes = (formData.get('notes') as string | null) || undefined;
 
     if (!file) {
@@ -54,9 +56,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error: any) {
     console.error('Upload document error:', error);
-    if (error instanceof WorkflowError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
-    }
-    return NextResponse.json({ error: error.message || 'Failed to upload document' }, { status: 500 });
+    const status = error?.status || (error instanceof WorkflowError ? error.statusCode : 500);
+    return NextResponse.json({ error: error.message || 'Failed to upload document' }, { status });
   }
 }

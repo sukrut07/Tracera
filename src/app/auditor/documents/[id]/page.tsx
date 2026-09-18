@@ -54,6 +54,10 @@ export default function AuditorDocumentReviewPage({
     try {
       setLoading(true);
       const res = await fetch(`/api/documents/${documentId}`);
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load document');
@@ -83,42 +87,46 @@ export default function AuditorDocumentReviewPage({
           documentId,
         }),
       });
-      if (res.ok) {
-        fetchDocument();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to start review');
       }
-    } catch (err) {
-      console.error(err);
+      await fetchDocument();
+    } catch (err: any) {
+      alert(err.message || 'Error starting review');
     } finally {
       setIsStartingReview(false);
     }
   };
 
-  if (loading && !document) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] font-mono text-xs text-[#4A4A48]">
-        <div className="flex flex-col items-center gap-2">
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
           <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
-          <span className="font-bold">OPENING AUDIT REVIEW CONSOLE...</span>
+          <span className="font-bold">Loading document review workspace...</span>
         </div>
       </div>
     );
   }
 
-  if (error || !document) {
+  if (error || !document || !currentUser) {
     return (
-      <AppShell>
-        <div className="p-8 neo-box-lg bg-[#FFF2F0] text-center space-y-4 max-w-lg mx-auto font-mono">
-          <AlertCircle className="w-8 h-8 text-[#E73520] mx-auto" />
-          <h2 className="text-lg font-black uppercase text-[#0A0A0A]">DOCUMENT NOT FOUND</h2>
-          <p className="text-xs text-[#4A4A48]">{error || 'Unable to retrieve document.'}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF] p-4">
+        <div className="max-w-md w-full p-6 bg-white border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] space-y-4">
+          <div className="flex items-center gap-2 text-[#E73520] font-bold">
+            <AlertCircle className="w-5 h-5" />
+            <span>Document Access Error</span>
+          </div>
+          <p className="text-xs text-[#555550]">{error || 'Document not found or unauthorized'}</p>
           <Link
             href="/auditor/dashboard"
-            className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-bold uppercase tracking-wider"
+            className="neo-btn bg-[#0A0A0A] text-white px-4 py-2 text-xs font-bold inline-block"
           >
-            ← BACK TO REVIEW QUEUE
+            ← Back to Review Queue
           </Link>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
@@ -128,10 +136,10 @@ export default function AuditorDocumentReviewPage({
     document.versions?.[0] || {
       id: 'v1',
       document_id: document.id,
-      version_number: document.current_version,
-      file_name: document.title,
-      file_path: '#',
-      uploaded_by: '',
+      version_number: 1,
+      file_name: document.file_name || `${document.title}.pdf`,
+      file_path: `/uploads/${document.file_name || 'document.pdf'}`,
+      uploaded_by: document.client_id,
       uploaded_at: document.created_at,
     };
 
@@ -141,18 +149,7 @@ export default function AuditorDocumentReviewPage({
   const isSubmitted = document.status === 'SUBMITTED';
 
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: 'usr-auditor-001',
-          name: 'Auditor',
-          email: 'auditor@demo.com',
-          role: 'AUDITOR',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       <div className="space-y-6 font-mono">
         {/* Top Header Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b-[3px] border-[#0A0A0A] pb-5">

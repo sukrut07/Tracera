@@ -40,11 +40,23 @@ export function AppHeader({ currentUser }: AppHeaderProps) {
       setUser(currentUser);
     } else {
       fetch('/api/auth/login')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) setUser(data.user);
+        .then((res) => {
+          if (!res.ok) {
+            window.location.href = '/login';
+            return null;
+          }
+          return res.json();
         })
-        .catch(() => {});
+        .then((data) => {
+          if (data?.user) {
+            setUser(data.user);
+          } else {
+            window.location.href = '/login';
+          }
+        })
+        .catch(() => {
+          window.location.href = '/login';
+        });
     }
   }, [currentUser]);
 
@@ -66,7 +78,7 @@ export function AppHeader({ currentUser }: AppHeaderProps) {
       const res = await fetch('/api/notifications');
       const data = await res.json();
       if (res.ok && data.notifications) {
-        setUnreadCount(data.notifications.filter((n: any) => !n.is_read).length);
+        setUnreadCount(data.notifications.filter((n: any) => !n.read).length);
       }
     } catch {}
   };
@@ -91,26 +103,10 @@ export function AppHeader({ currentUser }: AppHeaderProps) {
 
   const isPartnerPath = pathname.startsWith('/partner');
 
-  const activeUser: UserProfile = user || currentUser || {
-    id: 'usr-current',
-    name: pathname.startsWith('/client')
-      ? 'Client Workspace'
-      : isPartnerPath
-      ? 'Lead Partner'
-      : pathname.startsWith('/admin')
-      ? 'Practice Admin'
-      : 'Assigned Auditor',
-    email: 'user@tracera.internal',
-    role: pathname.startsWith('/client')
-      ? 'CLIENT'
-      : isPartnerPath
-      ? 'PARTNER'
-      : pathname.startsWith('/admin')
-      ? 'ADMIN'
-      : 'AUDITOR',
-    client_id: null,
-    created_at: new Date().toISOString(),
-  };
+  const activeUser = user || currentUser;
+  if (!activeUser) {
+    return null;
+  }
 
   const isClient = activeUser.role === 'CLIENT';
   const isAdmin = activeUser.role === 'ADMIN';

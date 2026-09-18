@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sliders, ShieldCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export function FinalCta() {
   return (
@@ -34,14 +34,6 @@ export function FinalCta() {
               <span>ENTER WORKSPACE</span>
               <ArrowRight className="w-4 h-4 text-[#E73520]" />
             </Link>
-
-            <Link
-              href="/admin/evaluation-tools"
-              className="neo-btn bg-white text-[#0A0A0A] px-6 py-4 text-sm font-mono uppercase tracking-wider flex items-center gap-2 border-white shadow-[4px_4px_0_#0A0A0A]"
-            >
-              <Sliders className="w-4 h-4 text-[#E73520]" />
-              <span>EVALUATION SUITE</span>
-            </Link>
           </div>
         </div>
 
@@ -56,14 +48,11 @@ export function FinalCta() {
             <Link href="/login" className="hover:text-white transition-colors">
               Client Portal
             </Link>
-            <Link href="/auditor/dashboard" className="hover:text-white transition-colors">
-              Auditor Queue
+            <Link href="/login" className="hover:text-white transition-colors">
+              Staff Access
             </Link>
-            <Link href="/partner/dashboard" className="hover:text-white transition-colors">
-              Partner Desk
-            </Link>
-            <Link href="/admin/evaluation-tools" className="text-[#E73520] hover:underline font-bold">
-              Evaluation Tools
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Compliance &amp; Security
             </Link>
           </div>
 

@@ -13,14 +13,14 @@ interface UploadDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  clientId?: string;
+  engagementId?: string;
 }
 
 export function UploadDocumentModal({
   isOpen,
   onClose,
   onSuccess,
-  clientId = 'c1',
+  engagementId,
 }: UploadDocumentModalProps) {
   const [title, setTitle] = useState('');
   const [documentType, setDocumentType] = useState<DocumentType>('PURCHASE_REGISTER');
@@ -53,7 +53,8 @@ export function UploadDocumentModal({
       formData.append('title', title.trim());
       formData.append('documentType', documentType);
       formData.append('financialYear', financialYear);
-      formData.append('clientId', clientId);
+      // NOTE: clientId is intentionally NOT sent — derived server-side from the authenticated session
+      if (engagementId) formData.append('engagementId', engagementId);
       formData.append('notes', notes.trim());
       formData.append('file', file);
 

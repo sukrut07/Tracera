@@ -14,7 +14,6 @@ import {
   Eye,
   ArrowRight,
   RefreshCw,
-  Users,
   Shield,
   Sliders,
   X,
@@ -124,62 +123,6 @@ export function CommandPalette({ isOpen, onClose, onOpenUpload }: CommandPalette
         onClose();
         if (onOpenUpload) onOpenUpload();
         else router.push('/client/dashboard');
-      },
-    },
-    {
-      id: 'switch-client',
-      label: 'Switch Persona: Client User',
-      category: 'Personas',
-      icon: Users,
-      action: async () => {
-        await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'client@demo.com' }),
-        });
-        window.location.href = '/client/dashboard';
-      },
-    },
-    {
-      id: 'switch-auditor',
-      label: 'Switch Persona: Auditor',
-      category: 'Personas',
-      icon: Users,
-      action: async () => {
-        await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'auditor@demo.com' }),
-        });
-        window.location.href = '/auditor/dashboard';
-      },
-    },
-    {
-      id: 'switch-partner',
-      label: 'Switch Persona: Partner',
-      category: 'Personas',
-      icon: Users,
-      action: async () => {
-        await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'partner@demo.com' }),
-        });
-        window.location.href = '/partner/dashboard';
-      },
-    },
-    {
-      id: 'switch-admin',
-      label: 'Switch Persona: Admin',
-      category: 'Personas',
-      icon: Users,
-      action: async () => {
-        await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'admin@demo.com' }),
-        });
-        window.location.href = '/admin/dashboard';
       },
     },
     {

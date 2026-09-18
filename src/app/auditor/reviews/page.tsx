@@ -16,6 +16,10 @@ export default function AuditorReviewsPage() {
     try {
       if (isInitial) setLoading(true);
       const res = await fetch('/api/documents');
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         const reviewList = (data.documents || []).filter(
@@ -42,19 +46,23 @@ export default function AuditorReviewsPage() {
     };
   }, [loadData]);
 
+  if (loading && !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F5EF]">
+        <div className="flex flex-col items-center gap-2 text-[#4A4A48] font-sans text-xs">
+          <div className="w-6 h-6 border-3 border-[#0A0A0A] border-t-[#E73520] animate-spin" />
+          <span className="font-bold">Loading review queue...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return null;
+  }
+
   return (
-    <AppShell
-      currentUser={
-        currentUser || {
-          id: 'usr-auditor-001',
-          name: 'Rahul Sharma',
-          email: 'auditor@demo.com',
-          role: 'AUDITOR',
-          client_id: null,
-          created_at: '',
-        }
-      }
-    >
+    <AppShell currentUser={currentUser}>
       <div className="space-y-6 font-sans">
         <div className="border-b-[3px] border-[#0A0A0A] pb-5 flex flex-wrap items-center justify-between gap-4">
           <div>

@@ -1,4 +1,4 @@
-import { createDbNotification, getDbNotifications, markDbNotificationRead } from '@/lib/db';
+import { createDbNotification, getDbNotifications, markDbNotificationRead, markAllDbNotificationsRead } from '@/lib/db';
 import { connectToDatabase, isMongoConfigured } from '@/lib/mongodb/connection';
 import { Notification as MongoNotification } from '@/lib/mongodb/models';
 
@@ -58,6 +58,7 @@ export const notificationService = {
       message: r.message,
       document_id: r.document_id,
       read: Boolean(r.read),
+      is_read: Boolean(r.read),
       created_at: r.created_at,
     }));
   },
@@ -73,6 +74,21 @@ export const notificationService = {
         await MongoNotification.findByIdAndUpdate(id, { read: true });
       } catch (err) {
         console.warn('MongoDB notification update failed:', err);
+      }
+    }
+  },
+
+  /**
+   * Mark all notifications as read for a user
+   */
+  async markAllRead(userId: string): Promise<void> {
+    markAllDbNotificationsRead(userId);
+    if (isMongoConfigured) {
+      try {
+        await connectToDatabase();
+        await MongoNotification.updateMany({ recipientId: userId }, { read: true });
+      } catch (err) {
+        console.warn('MongoDB notifications bulk update failed:', err);
       }
     }
   },

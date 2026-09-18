@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/session';
-import { getDocumentById } from '@/lib/db';
-import { ocrService } from '@/lib/ocr/ocr-service';
+import { getDocumentById, getDbExtractedData } from '@/lib/db';
 import { validationService } from '@/lib/validation/document-validation';
 
 export async function GET(
@@ -28,20 +27,18 @@ export async function GET(
     const versionNum = requestedVersion ? parseInt(requestedVersion, 10) : document.current_version;
     const activeVersion = document.versions?.find((v) => v.version_number === versionNum) || document.versions?.[0];
 
-    // Compute OCR extraction and automated audit validations
+    // Load stored OCR extracted data (read-only query — never process OCR on GET)
     let extractedData = null;
     let validation = null;
-    try {
-      extractedData = await ocrService.processDocument({
-        documentId: document.id,
-        versionId: activeVersion?.id || 'v1',
-        versionNumber: versionNum,
-        documentType: document.document_type,
-        fileName: activeVersion?.file_name || document.title,
-      });
-      validation = validationService.validate(extractedData);
-    } catch (ocrErr) {
-      console.error('OCR/Validation computation warning:', ocrErr);
+    if (activeVersion?.id) {
+      extractedData = getDbExtractedData(activeVersion.id);
+      if (extractedData) {
+        try {
+          validation = validationService.validate(extractedData);
+        } catch {
+          validation = null;
+        }
+      }
     }
 
     return NextResponse.json({
@@ -52,6 +49,7 @@ export async function GET(
       validation,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to fetch document' }, { status: 500 });
+    const status = error?.status || (error?.name === 'WorkflowError' ? error?.statusCode : 500);
+    return NextResponse.json({ error: error.message || 'Failed to fetch document' }, { status });
   }
 }

@@ -63,7 +63,7 @@ export function NotificationDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-[#0A0A0A]/60 backdrop-blur-xs font-mono"
+      className="fixed inset-0 z-50 flex justify-end bg-[#0A0A0A]/60 backdrop-blur-xs font-sans"
       onClick={onClose}
     >
       <div
@@ -75,7 +75,7 @@ export function NotificationDrawer({
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 bg-[#E73520] border border-[#0A0A0A] animate-pulse" />
             <h3 className="text-xs uppercase tracking-widest font-black text-[#0A0A0A]">
-              NOTIFICATIONS ({notifications.filter((n) => !n.is_read).length} UNREAD)
+              NOTIFICATIONS ({notifications.filter((n) => !n.read && !n.is_read).length} UNREAD)
             </h3>
           </div>
 
@@ -113,12 +113,13 @@ export function NotificationDrawer({
             notifications.map((n) => {
               const isCorrection = n.type === 'CORRECTION_REQUIRED';
               const isApproval = n.type === 'DOCUMENT_APPROVED';
+              const isUnread = !n.read && !n.is_read;
 
               return (
                 <div
                   key={n.id}
                   className={`p-4 transition-colors ${
-                    !n.is_read ? 'bg-[#FFF2F0]' : 'bg-white hover:bg-[#F7F5EF]'
+                    isUnread ? 'bg-[#FFF2F0]' : 'bg-white hover:bg-[#F7F5EF]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-1">

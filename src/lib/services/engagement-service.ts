@@ -773,45 +773,48 @@ export const engagementService = {
     }
 
     const year = new Date().getFullYear();
-    const closureId = `AUD-${year}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const closureRand = crypto.randomInt(10000, 100000);
+    const closureId = `AUD-${year}-${closureRand}`;
     const now = new Date().toISOString();
 
-    // Mark final stages completed
-    updateEngagementStage(engagementId, engagement.total_stages - 1, {
-      status: 'COMPLETED',
-      completed_at: now,
-    });
-    updateEngagementStage(engagementId, engagement.total_stages, {
-      status: 'COMPLETED',
-      completed_at: now,
-    });
+    const db = getDb();
+    db.transaction(() => {
+      // Mark final stages completed
+      updateEngagementStage(engagementId, engagement.total_stages - 1, {
+        status: 'COMPLETED',
+        completed_at: now,
+      });
+      updateEngagementStage(engagementId, engagement.total_stages, {
+        status: 'COMPLETED',
+        completed_at: now,
+      });
 
-    // Update engagement to CLOSED
-    updateDbEngagement(engagementId, {
-      status: 'CLOSED',
-      progress_percent: 100,
-      current_stage_index: engagement.total_stages - 1,
-      closure_id: closureId,
-      closed_at: now,
-      closed_by_id: user.id,
-      closed_by_name: user.name,
-      closure_summary: closureSummary.trim() || 'Engagement successfully concluded in compliance with ICAI standards.',
-    });
-
-    // Audit log
-    insertAuditLog({
-      engagement_id: engagementId,
-      actor_id: user.id,
-      action: 'ENGAGEMENT_CLOSED',
-      metadata: {
+      // Update engagement to CLOSED
+      updateDbEngagement(engagementId, {
+        status: 'CLOSED',
+        progress_percent: 100,
+        current_stage_index: engagement.total_stages - 1,
         closure_id: closureId,
-        closed_by: user.name,
-        summary: closureSummary,
-      },
-    });
+        closed_at: now,
+        closed_by_id: user.id,
+        closed_by_name: user.name,
+        closure_summary: closureSummary.trim() || 'Engagement successfully concluded in compliance with ICAI standards.',
+      });
+
+      // Audit log
+      insertAuditLog({
+        engagement_id: engagementId,
+        actor_id: user.id,
+        action: 'ENGAGEMENT_CLOSED',
+        metadata: {
+          closure_id: closureId,
+          closed_by: user.name,
+          summary: closureSummary,
+        },
+      });
+    })();
 
     // Celebrate & notify client
-    const db = getDb();
     const clientUsers = db.prepare("SELECT id FROM users WHERE client_id = ?").all(engagement.client_id) as { id: string }[];
     clientUsers.forEach((cu) => {
       createDbNotification({
