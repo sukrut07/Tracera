@@ -116,7 +116,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ user: null }, { status: 401 });
+      return NextResponse.json({ user: null }, { status: 200 });
     }
     // Only return safe fields — never return password hash or sensitive data
     return NextResponse.json({
@@ -132,6 +132,6 @@ export async function GET() {
     });
   } catch (err: any) {
     console.warn('[auth/login GET] session resolution notice:', err?.message);
-    return NextResponse.json({ user: null }, { status: 401 });
+    return NextResponse.json({ user: null }, { status: 200 });
   }
 }
