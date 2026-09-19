@@ -52,24 +52,26 @@ export default function LoginPage() {
     return err?.message || 'Authentication failed. Please verify your credentials.';
   };
 
-  const handleQuickLogin = async (role: 'CLIENT' | 'AUDITOR' | 'PARTNER') => {
+  const handleQuickLogin = async (role: 'CLIENT' | 'AUDITOR' | 'PARTNER' | 'ADMIN') => {
     setLoading(true);
     setError(null);
     try {
-      const emailMap = {
-        CLIENT: 'client@demo.com',
-        AUDITOR: 'auditor@demo.com',
-        PARTNER: 'partner@demo.com',
+      const credsMap = {
+        CLIENT: { email: 'client@demo.com', password: 'Demo@123456' },
+        AUDITOR: { email: 'auditor@demo.com', password: 'Demo@123456' },
+        PARTNER: { email: 'partner@demo.com', password: 'Demo@123456' },
+        ADMIN: { email: 'admin@gmail.com', password: '12345678' },
       };
       const redirectMap = {
         CLIENT: '/client/dashboard',
         AUDITOR: '/auditor/dashboard',
         PARTNER: '/partner/dashboard',
+        ADMIN: '/admin/dashboard',
       };
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailMap[role], password: 'Demo@123456' }),
+        body: JSON.stringify(credsMap[role]),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Quick access failed');
@@ -285,7 +287,7 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('CLIENT')}
@@ -332,6 +334,22 @@ export default function LoginPage() {
                   </div>
                   <p className="text-[11px] font-bold text-[#0A0A0A] leading-tight">Partner Suite</p>
                   <p className="text-[9px] text-[#777770]">partner@demo.com</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('ADMIN')}
+                  disabled={loading}
+                  className="p-2.5 bg-white hover:bg-[#F7F5EF] border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A] text-left transition-all cursor-pointer group hover:translate-x-0.5 hover:translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-[#E73520] text-white border border-[#0A0A0A]">
+                      ADMIN
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-[#0A0A0A] group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <p className="text-[11px] font-bold text-[#0A0A0A] leading-tight">Admin Suite</p>
+                  <p className="text-[9px] text-[#777770]">admin@gmail.com</p>
                 </button>
               </div>
             </div>

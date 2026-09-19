@@ -538,6 +538,18 @@ function seedSystemUsers(db: Database.Database) {
     db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-abc' WHERE id = ?").run(demoHash, adminRow.id);
   }
 
+  // Primary Platform Administrator requested by user
+  const adminGmailHash = hashPassword('12345678');
+  const adminGmailRow = db.prepare("SELECT id FROM users WHERE email = 'admin@gmail.com'").get() as { id: string } | undefined;
+  if (!adminGmailRow) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, role, client_id, organization, firm_id, password_hash, created_at)
+      VALUES ('sys-admin-master', 'Platform Administrator', 'admin@gmail.com', 'ADMIN', null, 'TRACERA Audit Governance', 'firm-abc', ?, ?)
+    `).run(adminGmailHash, now);
+  } else {
+    db.prepare("UPDATE users SET password_hash = ?, role = 'ADMIN', firm_id = 'firm-abc' WHERE id = ?").run(adminGmailHash, adminGmailRow.id);
+  }
+
   // ── 3. Seed Firm B (XYZ & Co.) Users & Clients ───────────────────────────
   const auditorXyzRow = db.prepare("SELECT id FROM users WHERE email = 'auditor@xyz.com'").get() as { id: string } | undefined;
   const auditorXyzId = auditorXyzRow?.id || 'sys-auditor-xyz';
@@ -575,6 +587,180 @@ function seedSystemUsers(db: Database.Database) {
     `).run(demoHash, now);
   } else {
     db.prepare("UPDATE users SET password_hash = ?, firm_id = 'firm-xyz' WHERE id = ?").run(demoHash, partnerXyzRow.id);
+  }
+
+  // ── 4. Seed Initial Audit Documents & Request Ledger ───────────────────────
+  seedInitialAuditDocuments(db);
+}
+
+function seedInitialAuditDocuments(db: Database.Database) {
+  try {
+    const docCount = (db.prepare('SELECT COUNT(*) as c FROM documents').get() as any)?.c || 0;
+    if (docCount > 0) return;
+
+    const now = new Date();
+    const tMinus1 = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    const tMinus2 = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+    const tMinus3 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const tNow = now.toISOString();
+
+    const baselineDocs = [
+      {
+        id: 'doc-seed-001',
+        client_id: 'demo-client-001',
+        firm_id: 'firm-abc',
+        title: 'Q1 HDFC Bank Statement 2024-25',
+        document_type: 'BANK_STATEMENT',
+        status: 'APPROVED',
+        current_version: 1,
+        assigned_to: 'sys-auditor-001',
+        file_name: 'HDFC_Current_Account_Q1_2024-25.csv',
+        notes: 'Initial monthly submission. Reconciled with general ledger and statutory challans.',
+        review_comment: 'Bank reconciliation completed. 100% matched against general ledger and GST challans. Approved.',
+        created_at: tMinus3,
+        updated_at: tMinus2,
+      },
+      {
+        id: 'doc-seed-002',
+        client_id: 'demo-client-001',
+        firm_id: 'firm-abc',
+        title: 'Sales Register — April to June 2024',
+        document_type: 'SALES_REGISTER',
+        status: 'APPROVED',
+        current_version: 1,
+        assigned_to: 'sys-auditor-001',
+        file_name: 'Sales_Register_FY24-25.csv',
+        notes: 'Quarterly sales register with invoice breakdown and customer GSTINs.',
+        review_comment: 'Turnover verified against GSTR-1 portal filings and e-invoices. Approved.',
+        created_at: tMinus3,
+        updated_at: tMinus1,
+      },
+      {
+        id: 'doc-seed-003',
+        client_id: 'demo-client-001',
+        firm_id: 'firm-abc',
+        title: 'Purchase Register Q1 FY 2024-25',
+        document_type: 'PURCHASE_REGISTER',
+        status: 'UNDER_REVIEW',
+        current_version: 1,
+        assigned_to: 'sys-auditor-001',
+        file_name: 'Purchase_Register_FY24-25_v1.csv',
+        notes: 'Monthly purchase register uploaded for quarterly audit verification.',
+        created_at: tMinus2,
+        updated_at: tMinus1,
+      },
+      {
+        id: 'doc-seed-004',
+        client_id: 'demo-client-001',
+        firm_id: 'firm-abc',
+        title: 'GSTR-3B Monthly Return Q1',
+        document_type: 'GST_RETURN',
+        status: 'SUBMITTED',
+        current_version: 1,
+        assigned_to: 'sys-auditor-001',
+        file_name: 'GSTR3B_Q1_2024-25.csv',
+        notes: 'Consolidated GSTR-3B return downloaded from GST portal for ITC verification.',
+        created_at: tMinus1,
+        updated_at: tNow,
+      },
+      {
+        id: 'doc-seed-005',
+        client_id: 'demo-client-001',
+        firm_id: 'firm-abc',
+        title: 'Expense Summary & Form 26AS TDS Credit',
+        document_type: 'EXPENSE_SUMMARY',
+        status: 'CORRECTION_REQUIRED',
+        current_version: 1,
+        assigned_to: 'sys-auditor-001',
+        file_name: 'Expense_Summary_FY24-25.csv',
+        notes: 'Expense ledger along with Section 194C contractor TDS deductions.',
+        correction_reason: 'Section 194C TDS credit of ₹45,900 does not match Form 26AS Part A. Please reconcile challans and re-upload.',
+        created_at: tMinus3,
+        updated_at: tMinus1,
+      },
+    ];
+
+    for (const doc of baselineDocs) {
+      db.prepare(`
+        INSERT INTO documents (id, client_id, firm_id, title, document_type, status, current_version, assigned_to, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        doc.id,
+        doc.client_id,
+        doc.firm_id,
+        doc.title,
+        doc.document_type,
+        doc.status,
+        doc.current_version,
+        doc.assigned_to,
+        doc.created_at,
+        doc.updated_at
+      );
+
+      db.prepare(`
+        INSERT INTO document_versions (id, document_id, version_number, file_name, file_path, file_size, file_type, uploaded_by, uploaded_at, notes)
+        VALUES (?, ?, 1, ?, '/uploads/sample.csv', 1024, 'text/csv', 'sys-client-001', ?, ?)
+      `).run(
+        `ver-${doc.id}-1`,
+        doc.id,
+        doc.file_name,
+        doc.created_at,
+        doc.notes
+      );
+
+      // Initial upload audit log
+      db.prepare(`
+        INSERT INTO audit_logs (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+        VALUES (?, ?, null, 'sys-client-001', 'DOCUMENT_UPLOADED', ?, ?)
+      `).run(
+        `log-${doc.id}-upload`,
+        doc.id,
+        JSON.stringify({ file_name: doc.file_name, version: 1, document_type: doc.document_type, actor_name: 'Client Portal', actor_role: 'CLIENT' }),
+        doc.created_at
+      );
+
+      if (doc.status === 'UNDER_REVIEW') {
+        db.prepare(`
+          INSERT INTO audit_logs (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+          VALUES (?, ?, null, 'sys-auditor-001', 'REVIEW_STARTED', ?, ?)
+        `).run(
+          `log-${doc.id}-review`,
+          doc.id,
+          JSON.stringify({ version: 1, reviewer_name: 'Auditor Rahul', actor_name: 'Auditor Rahul', actor_role: 'AUDITOR' }),
+          doc.updated_at
+        );
+      } else if (doc.status === 'APPROVED') {
+        db.prepare(`
+          INSERT INTO audit_logs (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+          VALUES (?, ?, null, 'sys-auditor-001', 'DOCUMENT_APPROVED', ?, ?)
+        `).run(
+          `log-${doc.id}-approve`,
+          doc.id,
+          JSON.stringify({ version: 1, comment: doc.review_comment, reviewer_name: 'Auditor Rahul', actor_name: 'Auditor Rahul', actor_role: 'AUDITOR' }),
+          doc.updated_at
+        );
+        db.prepare(`
+          INSERT INTO reviews (id, document_id, version_id, reviewer_id, status, comment, created_at)
+          VALUES (?, ?, ?, 'sys-auditor-001', 'APPROVED', ?, ?)
+        `).run(`rev-${doc.id}`, doc.id, `ver-${doc.id}-1`, doc.review_comment, doc.updated_at);
+      } else if (doc.status === 'CORRECTION_REQUIRED') {
+        db.prepare(`
+          INSERT INTO audit_logs (id, document_id, engagement_id, actor_id, action, metadata, created_at)
+          VALUES (?, ?, null, 'sys-auditor-001', 'CORRECTION_REQUESTED', ?, ?)
+        `).run(
+          `log-${doc.id}-correction`,
+          doc.id,
+          JSON.stringify({ version: 1, reason: doc.correction_reason, reviewer_name: 'Auditor Rahul', actor_name: 'Auditor Rahul', actor_role: 'AUDITOR' }),
+          doc.updated_at
+        );
+        db.prepare(`
+          INSERT INTO reviews (id, document_id, version_id, reviewer_id, status, comment, created_at)
+          VALUES (?, ?, ?, 'sys-auditor-001', 'CORRECTION_REQUIRED', ?, ?)
+        `).run(`rev-${doc.id}`, doc.id, `ver-${doc.id}-1`, doc.correction_reason, doc.updated_at);
+      }
+    }
+  } catch (seedErr) {
+    console.warn('seedInitialAuditDocuments notice:', seedErr);
   }
 }
 
