@@ -63,37 +63,158 @@ TRACERA supports multiple CA firms on a single deployment with complete data and
 
 ### Multi-Tenant Demonstration Accounts
 
-All demo accounts share the password: `Demo@123456`
-
-| Firm | Role | User Name | Email | Direct Dashboard |
-| :--- | :--- | :--- | :--- | :--- |
-| **Firm A (ABC & Co.)** | `AUDITOR` (Reviewer) | Auditor Rahul | `auditor@demo.com` | `/auditor/dashboard` |
-| **Firm A (ABC & Co.)** | `CLIENT` (Staff/Client) | Acme Client Portal | `client@demo.com` | `/client/dashboard` |
-| **Firm A (ABC & Co.)** | `PARTNER` | CA Partner Vikram | `partner@demo.com` | `/partner/dashboard` |
-| **Firm B (XYZ & Co.)** | `AUDITOR` (Reviewer) | Auditor Priya (XYZ) | `auditor@xyz.com` | `/auditor/dashboard` |
-| **Firm B (XYZ & Co.)** | `CLIENT` (Staff/Client) | Zenith Client Portal | `client@xyz.com` | `/client/dashboard` |
-| **Firm B (XYZ & Co.)** | `PARTNER` | CA Partner Sanjay | `partner@xyz.com` | `/partner/dashboard` |
+| Firm | Role | User Name | Email | Password | Direct Dashboard |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **All Firms (Governance)** | `ADMIN` (Platform Admin) | Platform Administrator | `admin@gmail.com` | `12345678` | `/admin/dashboard` |
+| **Firm A (ABC & Co.)** | `AUDITOR` (Reviewer) | Auditor Rahul | `auditor@demo.com` | `Demo@123456` | `/auditor/dashboard` |
+| **Firm A (ABC & Co.)** | `CLIENT` (Staff/Client) | Acme Client Portal | `client@demo.com` | `Demo@123456` | `/client/dashboard` |
+| **Firm A (ABC & Co.)** | `PARTNER` | CA Partner Vikram | `partner@demo.com` | `Demo@123456` | `/partner/dashboard` |
+| **Firm B (XYZ & Co.)** | `AUDITOR` (Reviewer) | Auditor Priya (XYZ) | `auditor@xyz.com` | `Demo@123456` | `/auditor/dashboard` |
+| **Firm B (XYZ & Co.)** | `CLIENT` (Staff/Client) | Zenith Client Portal | `client@xyz.com` | `Demo@123456` | `/client/dashboard` |
+| **Firm B (XYZ & Co.)** | `PARTNER` | CA Partner Sanjay | `partner@xyz.com` | `Demo@123456` | `/partner/dashboard` |
 
 ---
 
-## 3. Short Architecture Explanation & Tenant Isolation
+## 3. Technical Architecture, Tools & Workflow Diagrams
 
-### Architecture Diagram
+### 3.1 Comprehensive Tools & Technology Stack
 
+| Category | Technology / Tool | Version | Purpose in TRACERA |
+| :--- | :--- | :--- | :--- |
+| **Core Web Framework** | [Next.js (App Router)](https://nextjs.org/) | `16.3.5` | Unified full-stack framework with React Server Components, Route Handlers, Turbopack, and edge middleware. |
+| **Frontend UI Library** | [React](https://react.dev/) | `19.2.8` | Component-driven presentation layer with optimistic state rendering and client-side transitions. |
+| **Language & Type System** | [TypeScript](https://www.typescriptlang.org/) | `5.x` | Strict type safety across database schemas, API contracts, workflow state machines, and session contexts. |
+| **Database Engine** | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | `13.0.3` | High-performance embedded SQLite engine running with Write-Ahead Logging (`WAL`), foreign key enforcement, and atomic ACID transactions. |
+| **Styling & Design System** | [Tailwind CSS](https://tailwindcss.com/) | `4.x` | Modern utility-first CSS styling with custom Neo-Brutalist design tokens (ink borders, sharp tactile shadows, high-contrast badges). |
+| **Typography** | [@fontsource/poppins](https://fontsource.org/fonts/poppins) | `5.2.8` | Crisp, legible geometric sans-serif typography (weights 400 through 900) optimized for data-dense audit tables. |
+| **Icons & Micro-Interactions** | [Lucide React](https://lucide.dev/) | `1.47.0` | Comprehensive vector iconography for audit statuses, document types, file operations, and security badges. |
+| **Animation Engine** | [Framer Motion](https://www.framer.com/motion/) | `13.4.0` | Fluid micro-interactions, modal transitions, and responsive status changes across review workspaces. |
+| **Cryptographic Security** | Node.js `crypto` | Native | `scryptSync` with unique salt per user for password hashing, `timingSafeEqual` constant-time comparison, and dual HMAC-SHA256 stateless session tokens. |
+| **Statutory PDF Reporting** | [jsPDF](https://github.com/parallax/jsPDF) | `4.2.1` | Programmatic vector PDF generation for Section 143(3) statutory audit engagement closure certification summaries. |
+| **Test Execution Suite** | [tsx](https://github.com/privatenumber/tsx) | `4.23.13` | Zero-config TypeScript execution engine running automated multi-firm tenant isolation and state machine verification suites. |
+| **Deployment Platform** | [Vercel](https://vercel.com/) | Cloud | Production serverless hosting with stateless HMAC session cookie verification. |
+
+---
+
+### 3.2 System Architecture & Technical Flow
+
+```mermaid
+flowchart TD
+    subgraph ClientTier["1. Presentation & Client Layer (React 19 / Next.js 16)"]
+        UI_Client["Client Portal<br/><code>/client/dashboard</code>"]
+        UI_Auditor["Auditor Workspace<br/><code>/auditor/dashboard</code>"]
+        UI_Partner["Partner Overview<br/><code>/partner/dashboard</code>"]
+        UI_Admin["Platform Admin<br/><code>/admin/dashboard</code>"]
+    end
+
+    subgraph SecurityTier["2. Edge, Proxy & Security Gateway (src/proxy.ts)"]
+        Proxy["Next.js Middleware Proxy<br/>Route Matching & Cookie Validation"]
+        TokenAuth["Stateless HMAC-SHA256<br/>Session Token Verification"]
+        TenancyContext["Tenancy Context Injector<br/>(firm_id, user_id, role)"]
+    end
+
+    subgraph APITier["3. API Route Handlers (src/app/api/*)"]
+        API_Auth["Auth API<br/><code>/api/auth/[login|me|logout]</code>"]
+        API_Docs["Documents API<br/><code>/api/documents/[id]</code>"]
+        API_Workflow["Workflow API<br/><code>/api/documents/[id]/[action]</code>"]
+        API_Audit["Audit Log API<br/><code>/api/audit-logs</code>"]
+        API_Report["Section 143(3) Report API<br/><code>/api/documents/[id]/report</code>"]
+    end
+
+    subgraph LogicTier["4. Core Workflow & Tenancy Engine (src/lib/*)"]
+        Guard["Tenancy Guard (requireDocumentAccess)<br/>Cross-Firm Boundary Firewall"]
+        StateMachine["State Machine Engine<br/>Atomic Transition Validation"]
+        VersionMgr["Multi-Version Manager<br/>v1 Preserved, v2 Linked"]
+        CryptoService["Node.js crypto Engine<br/>scryptSync + timingSafeEqual"]
+    end
+
+    subgraph DataTier["5. Data & Storage Layer (SQLite WAL & File Vault)"]
+        SQLite["SQLite Database (WAL Mode)<br/>ACID Transactions via better-sqlite3"]
+        Tables["Relational Tables:<br/>firms, users, clients, documents, document_versions"]
+        AuditLedger["Immutable Audit Ledger:<br/>audit_logs (Append-Only)"]
+        FileVault["Local Document Vault:<br/>.data/storage/documents/ (UUID Isolation)"]
+    end
+
+    UI_Client -->|HTTP Request| Proxy
+    UI_Auditor -->|HTTP Request| Proxy
+    UI_Partner -->|HTTP Request| Proxy
+    UI_Admin -->|HTTP Request| Proxy
+
+    Proxy --> TokenAuth
+    TokenAuth --> TenancyContext
+    TenancyContext --> APITier
+
+    API_Auth --> CryptoService
+    API_Docs --> Guard
+    API_Workflow --> Guard
+    API_Audit --> Guard
+    API_Report --> Guard
+
+    Guard --> StateMachine
+    StateMachine --> VersionMgr
+    VersionMgr --> SQLite
+    CryptoService --> SQLite
+
+    SQLite --> Tables
+    SQLite --> AuditLedger
+    API_Workflow --> FileVault
 ```
-Frontend (Next.js 16 App Router / React 19)
-   │
-   ▼ (HTTP Cookie Session / Scoped Identity)
-Backend / API Route Handlers (src/app/api/*)
-   │
-   ▼ (Authoritative requireDocumentAccess & Role Authorization)
-Database (SQLite WAL / .data/tracera.db & atomic transactions)
-   │
-   ▼ (Append-Only Event Ledger)
-Audit Log (Tamper-evident history: actor, role, action, timestamp, meta)
+
+---
+
+### 3.3 End-to-End Operational Workflow & Review Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client / Staff
+    actor Auditor as Reviewer / Auditor
+    actor Admin as Platform Admin (admin@gmail.com)
+    participant System as TRACERA Engine (Next.js & SQLite)
+    participant Vault as File Storage Vault
+    participant Ledger as Immutable Audit Trail
+
+    Note over Client, System: Phase 1: Document Upload & Registration
+    Client->>System: Upload Audit Document (e.g. Bank Statement)
+    System->>Vault: Persist physical file with unique UUID
+    System->>System: Create Document Record (status: SUBMITTED, version: v1)
+    System->>Ledger: Append DOCUMENT_UPLOADED event (actor: Client, v1)
+    System-->>Admin: Real-time sync: 1 New Request in Ledger (SUBMITTED)
+
+    Note over Auditor, System: Phase 2: Review Initiation
+    Auditor->>System: Open Document in Review Workspace
+    System->>System: Update status: SUBMITTED → UNDER_REVIEW
+    System->>Ledger: Append REVIEW_STARTED event (actor: Auditor)
+    System-->>Admin: Real-time sync: Status updated to UNDER_REVIEW
+
+    alt Scenario A: Correction Requested
+        Note over Auditor, Client: Branch A: Correction Required Cycle
+        Auditor->>System: Request Correction (Reason: "Page 3 missing transactions")
+        System->>System: Update status: UNDER_REVIEW → CORRECTION_REQUIRED
+        System->>Ledger: Append CORRECTION_REQUESTED event (with mandatory reason)
+        System-->>Admin: Real-time sync: Request marked CORRECTION_REQUIRED
+        Client->>System: Inspect Reviewer Notes & Upload Revised File
+        System->>Vault: Persist revised file with new UUID
+        System->>System: Increment version: v2 created (v1 preserved, status: SUBMITTED)
+        System->>Ledger: Append CORRECTION_UPLOADED event (version: v2)
+        System-->>Admin: Real-time sync: Re-submitted for review
+    else Scenario B: Document Approval
+        Note over Auditor, System: Branch B: Statutory Sign-Off
+        Auditor->>System: Approve Document (Statutory Sign-Off)
+        System->>System: Update status: UNDER_REVIEW → APPROVED (Document Locked)
+        System->>Ledger: Append DOCUMENT_APPROVED event (actor: Auditor)
+        System-->>Admin: Real-time sync: Request marked APPROVED
+    end
+
+    Note over Auditor, Client: Phase 3: Statutory Audit Certification
+    Auditor->>System: Request Section 143(3) Statutory Report
+    System->>System: Compile verification metadata & tamper-evident audit history
+    System-->>Auditor: Deliver Signed Audit PDF Report (jsPDF)
 ```
 
-### How Firm A Stays Isolated From Firm B
+---
+
+### 3.4 How Firm A Stays Isolated From Firm B
 
 TRACERA enforces defense-in-depth tenant isolation across four distinct layers, grounded in the principles that **Authentication ≠ Authorization** and **Frontend hiding a button ≠ Security**:
 
@@ -110,6 +231,7 @@ This isolation is formally verified by an automated test suite (`npm run test:te
 
 | Role | Permitted Actions | Dedicated Portal |
 | :--- | :--- | :--- |
+| **Platform Administrator** | • Global oversight across all CA firms<br>• Real-time cross-dashboard request audit ledger<br>• Filter all requests (`APPROVED`, `SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUIRED`)<br>• Tenant-wide governance and security inspection | `/admin/dashboard` |
 | **Staff / Client** | • View assigned clients<br>• Upload required audit documents<br>• View real-time document status<br>• Respond to correction requests by uploading revised versions ($v_2$) | `/client/dashboard` |
 | **Reviewer / Auditor** | • View submitted client documents<br>• Open split-screen Review Workspace (`UNDER_REVIEW`)<br>• Approve documents (`APPROVED`)<br>• Request corrections with mandatory comments (`CORRECTION_REQUIRED`)<br>• Inspect immutable audit history | `/auditor/dashboard` |
 | **Partner (Optional)** | • Oversee cross-firm practice metrics<br>• Conduct quality control gates and sign-offs<br>• Inspect full firm-wide audit logs | `/partner/dashboard` |
